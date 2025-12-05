@@ -13,13 +13,11 @@ import type {
 interface TextAnalysisResult {
   violations: Violation[];
   missingDisclaimers: Omit<Violation, "offendingText" | "startIndex" | "endIndex">[];
-  summary: string;
   recommendations: string[];
 }
 
 interface ImageAnalysisResult {
   imageViolations: ImageViolation[];
-  imageSummary: string;
   imageRecommendations: string[];
 }
 
@@ -90,7 +88,6 @@ Respond with valid JSON only.`;
   }));
 
   parsedResult.recommendations = parsedResult.recommendations || [];
-  parsedResult.summary = parsedResult.summary || "Analysis complete.";
 
   return parsedResult;
 }
@@ -207,7 +204,6 @@ Respond with valid JSON only.`;
   }));
 
   parsedResult.imageRecommendations = parsedResult.imageRecommendations || [];
-  parsedResult.imageSummary = parsedResult.imageSummary || "Image analysis complete.";
 
   return parsedResult;
 }

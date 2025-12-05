@@ -470,11 +470,11 @@ function HighlightedText({ text, violations }: { text: string; violations: Viola
 }
 
 export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
-  const totalViolations = report.textViolations.length + report.imageViolations.length;
-  const criticalCount = [...report.textViolations, ...report.imageViolations].filter(
+  const totalViolations = report.textViolations.length;
+  const criticalCount = report.textViolations.filter(
     (v) => v.severity === "critical"
   ).length;
-  const warningCount = [...report.textViolations, ...report.imageViolations].filter(
+  const warningCount = report.textViolations.filter(
     (v) => v.severity === "warning"
   ).length;
 
@@ -522,12 +522,6 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
           <p className="text-sm text-slate-400">
             {totalViolations} issue{totalViolations !== 1 ? "s" : ""} found
           </p>
-          <button
-            onClick={onReset}
-            className="w-full sm:w-auto mt-2 px-4 py-2.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-          >
-            Check Another Ad
-          </button>
         </div>
       </div>
 
@@ -611,20 +605,6 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
         </div>
       )}
 
-      {/* Image Violations */}
-      {report.imageViolations.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-200">
-            <ImageIcon className="w-5 h-5" />
-            Image Violations ({report.imageViolations.length})
-          </h3>
-          <div className="space-y-3">
-            {report.imageViolations.map((violation) => (
-              <ImageViolationCard key={violation.id} violation={violation} />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Recommendations */}
       {report.recommendations.length > 0 && (

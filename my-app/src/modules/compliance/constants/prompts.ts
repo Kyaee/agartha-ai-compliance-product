@@ -83,9 +83,10 @@ Respond with a JSON object following this exact schema:
       "confidence": 0.0-1.0
     }
   ],
-  "summary": "Brief overall assessment",
   "recommendations": ["List", "of", "key", "improvements"]
 }
+
+IMPORTANT: Only analyze the actual marketing copy content. Do not include any summary or overall assessment in your response.
 
 Be precise and helpful. Your goal is to help marketers create compliant ads, not to block them unnecessarily.`;
 }
@@ -146,11 +147,10 @@ Respond with a JSON object:
       }
     }
   ],
-  "imageSummary": "Brief assessment of the image",
   "imageRecommendations": ["List of visual improvements"]
 }
 
-If the image appears compliant, return an empty imageViolations array with a positive summary.`;
+If the image appears compliant, return an empty imageViolations array. Do not include any summary.`;
 
 export interface SightEngineModerationData {
   nudity: {
@@ -281,10 +281,9 @@ Respond with a JSON object:
       }
     }
   ],
-  "imageSummary": "Brief assessment of the image including SightEngine findings",
   "imageRecommendations": ["List of visual improvements"]
 }
 
-If the image appears compliant, return an empty imageViolations array with a positive summary.`;
+If the image appears compliant, return an empty imageViolations array. Do not include any summary.`;
 }
 

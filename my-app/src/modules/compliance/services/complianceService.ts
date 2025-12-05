@@ -16,13 +16,11 @@ import type {
 interface TextAnalysisResult {
   violations: Violation[];
   missingDisclaimers: Omit<Violation, "offendingText" | "startIndex" | "endIndex">[];
-  summary: string;
   recommendations: string[];
 }
 
 interface ImageAnalysisResult {
   imageViolations: ImageViolation[];
-  imageSummary: string;
   imageRecommendations: string[];
 }
 
@@ -136,19 +134,12 @@ export async function analyzeImageCompliance(
 }
 
 export function calculateComplianceScore(
-  textViolations: Violation[],
-  imageViolations: ImageViolation[]
+  textViolations: Violation[]
 ): { score: number; status: "pass" | "fail" | "review" } {
   let score = 100;
 
-  // Deduct points for text violations
+  // Deduct points for text violations only
   for (const violation of textViolations) {
-    const config = SEVERITY_CONFIG[violation.severity];
-    score -= config.weight * violation.confidence;
-  }
-
-  // Deduct points for image violations
-  for (const violation of imageViolations) {
     const config = SEVERITY_CONFIG[violation.severity];
     score -= config.weight * violation.confidence;
   }
@@ -158,9 +149,7 @@ export function calculateComplianceScore(
 
   // Determine status
   let status: "pass" | "fail" | "review";
-  const hasCritical =
-    textViolations.some((v) => v.severity === "critical") ||
-    imageViolations.some((v) => v.severity === "critical");
+  const hasCritical = textViolations.some((v) => v.severity === "critical");
 
   if (hasCritical || score < 60) {
     status = "fail";
@@ -213,13 +202,27 @@ export function generateComplianceReport(
     );
   }
 
-  // Build summary
-  let summary = textAnalysis.summary;
-  if (imageAnalysis?.imageSummary) {
-    summary += ` ${imageAnalysis.imageSummary}`;
-  }
-  if (sightEngineResult && sightEngineResult.violations.length > 0) {
-    summary += ` Image moderation found ${sightEngineResult.violations.length} potential issue(s).`;
+  // Generate summary based on analysis results
+  const totalIssues = allTextViolations.length + imageViolations.length;
+  const criticalCount = [...allTextViolations, ...imageViolations].filter(v => v.severity === "critical").length;
+  const warningCount = [...allTextViolations, ...imageViolations].filter(v => v.severity === "warning").length;
+  
+  let summary: string;
+  if (totalIssues === 0) {
+    summary = "No compliance issues detected. Your content appears to meet platform advertising guidelines.";
+  } else {
+    const parts: string[] = [];
+    if (criticalCount > 0) {
+      parts.push(`${criticalCount} critical issue${criticalCount > 1 ? "s" : ""}`);
+    }
+    if (warningCount > 0) {
+      parts.push(`${warningCount} warning${warningCount > 1 ? "s" : ""}`);
+    }
+    const infoCount = totalIssues - criticalCount - warningCount;
+    if (infoCount > 0) {
+      parts.push(`${infoCount} info item${infoCount > 1 ? "s" : ""}`);
+    }
+    summary = `Analysis found ${parts.join(", ")}. Review the violations below and apply suggested fixes before publishing.`;
   }
 
   return {
