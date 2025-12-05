@@ -2,7 +2,7 @@
 
 import OpenAI from "openai";
 import { v4 as uuidv4 } from "uuid";
-import { buildSystemPrompt, IMAGE_ANALYSIS_PROMPT } from "../constants/prompts";
+import { buildSystemPrompt, buildImageAnalysisPromptWithSightEngine, type SightEngineModerationData } from "../constants/prompts";
 import { SEVERITY_CONFIG } from "../constants/policies";
 import type {
   ComplianceReport,
@@ -10,6 +10,7 @@ import type {
   Platform,
   ProductCategory,
   Violation,
+  SightEngineResult,
 } from "../types";
 
 interface TextAnalysisResult {
@@ -72,20 +73,24 @@ export async function analyzeTextCompliance(
 export async function analyzeImageCompliance(
   imageBase64: string,
   platform: Platform,
-  apiKey: string
+  apiKey: string,
+  sightEngineData?: SightEngineModerationData
 ): Promise<ImageAnalysisResult> {
   const openai = new OpenAI({ apiKey });
+
+  // Build prompt with SightEngine context if available
+  const systemPrompt = buildImageAnalysisPromptWithSightEngine(platform, sightEngineData);
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
-      { role: "system", content: IMAGE_ANALYSIS_PROMPT },
+      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text: `Please analyze this healthcare advertising image for compliance issues. Platform: ${platform.toUpperCase()}`,
+            text: `Please analyze this healthcare advertising image for compliance issues.${sightEngineData ? " SightEngine pre-scan results are provided in the system prompt - use them to inform your analysis." : ""}`,
           },
           {
             type: "image_url",
@@ -162,7 +167,8 @@ export function generateComplianceReport(
   productCategory: ProductCategory,
   textAnalysis: TextAnalysisResult,
   imageAnalysis?: ImageAnalysisResult,
-  imageUrl?: string
+  imageUrl?: string,
+  sightEngineResult?: SightEngineResult
 ): ComplianceReport {
   // Combine violations and missing disclaimers
   const allTextViolations: Violation[] = [
@@ -175,7 +181,10 @@ export function generateComplianceReport(
     })),
   ];
 
-  const imageViolations = imageAnalysis?.imageViolations || [];
+  // Combine GPT image violations with SightEngine violations
+  const gptImageViolations = imageAnalysis?.imageViolations || [];
+  const sightEngineViolations = sightEngineResult?.violations || [];
+  const imageViolations = [...gptImageViolations, ...sightEngineViolations];
 
   const { score, status } = calculateComplianceScore(allTextViolations, imageViolations);
 
@@ -185,10 +194,20 @@ export function generateComplianceReport(
     ...(imageAnalysis?.imageRecommendations || []),
   ];
 
+  // Add SightEngine-specific recommendations
+  if (sightEngineResult && sightEngineResult.overallSafetyScore < 80) {
+    recommendations.push(
+      "Image moderation detected potential issues. Review the image safety scores and consider using alternative imagery."
+    );
+  }
+
   // Build summary
   let summary = textAnalysis.summary;
   if (imageAnalysis?.imageSummary) {
     summary += ` ${imageAnalysis.imageSummary}`;
+  }
+  if (sightEngineResult && sightEngineResult.violations.length > 0) {
+    summary += ` Image moderation found ${sightEngineResult.violations.length} potential issue(s).`;
   }
 
   return {
@@ -204,6 +223,8 @@ export function generateComplianceReport(
     imageUrl,
     summary,
     recommendations,
+    imageModerationScores: sightEngineResult?.moderationScores,
+    imageSafetyScore: sightEngineResult?.overallSafetyScore,
   };
 }
 

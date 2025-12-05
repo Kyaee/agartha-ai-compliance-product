@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Upload, FileText, Image as ImageIcon, Loader2, AlertCircle, X } from "lucide-react";
-import type { Platform, ProductCategory, SubmissionData } from "../types";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Upload, FileText, Image as ImageIcon, Loader2, AlertCircle, X, Sparkles, Clipboard, ScanEye, FileSearch } from "lucide-react";
+import type { Platform, ProductCategory, SubmissionData, LLMProvider } from "../types";
 import { PLATFORM_DISPLAY_NAMES, PRODUCT_CATEGORY_DISPLAY_NAMES } from "../constants/policies";
 
 interface SubmissionFormProps {
-  onSubmit: (data: SubmissionData & { apiKey: string }) => Promise<void>;
+  onSubmit: (data: SubmissionData & { apiKey: string; provider: LLMProvider; imageOnly?: boolean }) => Promise<void>;
   isLoading: boolean;
 }
+
+const LLM_PROVIDERS: Record<LLMProvider, { name: string; icon: string; placeholder: string }> = {
+  gemini: { name: "Google Gemini", icon: "✨", placeholder: "AIza..." },
+  openai: { name: "OpenAI GPT-4o", icon: "🤖", placeholder: "sk-..." },
+};
 
 const EXAMPLE_NON_COMPLIANT = `🔥 MIRACLE WEIGHT LOSS SOLUTION! 🔥
 
@@ -31,9 +36,91 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState("");
+  const [provider, setProvider] = useState<LLMProvider>("gemini");
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [imageOnly, setImageOnly] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // Handle image from File object (used by upload, paste, and drop)
+  const handleImageFile = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Please paste or drop an image file");
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Image must be less than 10MB");
+      return;
+    }
+
+    setImageFile(file);
+    setImageUrl("");
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImagePreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  // Handle paste event
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          handleImageFile(file);
+        }
+        break;
+      }
+    }
+  }, [handleImageFile]);
+
+  // Handle drag events
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone entirely
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleImageFile(files[0]);
+    }
+  }, [handleImageFile]);
+
+  // Add paste event listener
+  useEffect(() => {
+    document.addEventListener("paste", handlePaste);
+    return () => {
+      document.removeEventListener("paste", handlePaste);
+    };
+  }, [handlePaste]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -77,24 +164,34 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
     e.preventDefault();
     setError(null);
 
-    if (!marketingCopy.trim()) {
-      setError("Please enter marketing copy to analyze");
-      return;
+    // Validation based on mode
+    if (imageOnly) {
+      if (!imageFile && !imageUrl) {
+        setError("Please upload an image or enter an image URL for image-only scan");
+        return;
+      }
+    } else {
+      if (!marketingCopy.trim()) {
+        setError("Please enter marketing copy to analyze");
+        return;
+      }
     }
 
     if (!apiKey.trim()) {
-      setError("Please enter your OpenAI API key");
+      setError(`Please enter your ${LLM_PROVIDERS[provider].name} API key`);
       return;
     }
 
     try {
       await onSubmit({
-        marketingCopy,
+        marketingCopy: imageOnly ? "" : marketingCopy,
         imageFile: imageFile || undefined,
         imageUrl: imageUrl || undefined,
         platform,
         productCategory,
         apiKey,
+        provider,
+        imageOnly,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -103,12 +200,98 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Scan Mode Toggle */}
+      <div className="form-group">
+        <label className="form-label">
+          <span className="flex items-center gap-2">
+            <ScanEye className="w-4 h-4" />
+            Scan Mode
+          </span>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setImageOnly(false)}
+            className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border transition-all ${
+              !imageOnly
+                ? "border-blue-500 bg-blue-500/10 text-white"
+                : "border-slate-700 bg-slate-800/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50"
+            }`}
+          >
+            <FileSearch className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="text-left">
+              <div className={`font-medium text-sm sm:text-base ${!imageOnly ? "text-white" : "text-slate-300"}`}>
+                Full Analysis
+              </div>
+              <div className="text-xs text-slate-500 hidden sm:block">Text + Image</div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setImageOnly(true)}
+            className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border transition-all ${
+              imageOnly
+                ? "border-violet-500 bg-violet-500/10 text-white"
+                : "border-slate-700 bg-slate-800/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50"
+            }`}
+          >
+            <ScanEye className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="text-left">
+              <div className={`font-medium text-sm sm:text-base ${imageOnly ? "text-white" : "text-slate-300"}`}>
+                Image Only
+              </div>
+              <div className="text-xs text-slate-500 hidden sm:block">Quick image scan</div>
+            </div>
+          </button>
+        </div>
+        {imageOnly && (
+          <p className="text-xs text-violet-400 mt-2 flex items-center gap-1">
+            <ScanEye className="w-3 h-3" />
+            SightEngine moderation + AI visual analysis
+          </p>
+        )}
+      </div>
+
+      {/* LLM Provider Selection */}
+      <div className="form-group">
+        <label className="form-label">
+          <span className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            AI Provider
+          </span>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          {(Object.entries(LLM_PROVIDERS) as [LLMProvider, typeof LLM_PROVIDERS[LLMProvider]][]).map(([key, config]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                setProvider(key);
+                setApiKey(""); // Clear API key when switching providers
+              }}
+              className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                provider === key
+                  ? "border-violet-500 bg-violet-500/10 text-white"
+                  : "border-slate-700 bg-slate-800/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50"
+              }`}
+            >
+              <span className="text-2xl">{config.icon}</span>
+              <div className="text-left">
+                <div className={`font-medium ${provider === key ? "text-white" : "text-slate-300"}`}>
+                  {config.name}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* API Key Input */}
       <div className="form-group">
         <label htmlFor="apiKey" className="form-label">
-          <span className="flex items-center gap-2">
-            🔑 OpenAI API Key
-            <span className="text-xs font-normal text-slate-400">(stored locally, never sent to our servers)</span>
+          <span className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <span>🔑 {LLM_PROVIDERS[provider].name} API Key</span>
+            <span className="text-xs font-normal text-slate-400">(stored locally only)</span>
           </span>
         </label>
         <input
@@ -116,9 +299,16 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
           id="apiKey"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-..."
+          placeholder={LLM_PROVIDERS[provider].placeholder}
           className="form-input"
         />
+        <p className="text-xs text-slate-500 mt-2">
+          {provider === "gemini" ? (
+            <>Get your free API key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">Google AI Studio</a></>
+          ) : (
+            <>Get your API key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">OpenAI Platform</a></>
+          )}
+        </p>
       </div>
 
       {/* Platform & Category Selection */}
@@ -160,50 +350,61 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
         </div>
       </div>
 
-      {/* Marketing Copy Input */}
-      <div className="form-group">
-        <div className="flex items-center justify-between mb-2">
-          <label htmlFor="copy" className="form-label mb-0">
-            <span className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Marketing Copy
-            </span>
-          </label>
-          <button
-            type="button"
-            onClick={loadExample}
-            className="text-xs px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full hover:bg-amber-500/30 transition-colors"
-          >
-            Load Non-Compliant Example
-          </button>
+      {/* Marketing Copy Input - Hidden in Image Only mode */}
+      {!imageOnly && (
+        <div className="form-group">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+            <label htmlFor="copy" className="form-label mb-0">
+              <span className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Marketing Copy
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={loadExample}
+              className="text-xs px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-full hover:bg-amber-500/30 transition-colors w-fit"
+            >
+              Load Example
+            </button>
+          </div>
+          <textarea
+            id="copy"
+            value={marketingCopy}
+            onChange={(e) => setMarketingCopy(e.target.value)}
+            placeholder="Paste your healthcare marketing copy here..."
+            rows={10}
+            className="form-textarea font-mono text-sm"
+          />
+          <div className="text-xs text-slate-500 mt-1">
+            {marketingCopy.length} characters
+          </div>
         </div>
-        <textarea
-          id="copy"
-          value={marketingCopy}
-          onChange={(e) => setMarketingCopy(e.target.value)}
-          placeholder="Paste your healthcare marketing copy here..."
-          rows={10}
-          className="form-textarea font-mono text-sm"
-        />
-        <div className="text-xs text-slate-500 mt-1">
-          {marketingCopy.length} characters
-        </div>
-      </div>
+      )}
 
       {/* Image Upload Section */}
       <div className="form-group">
         <label className="form-label">
           <span className="flex items-center gap-2">
             <ImageIcon className="w-4 h-4" />
-            Ad Creative / Image (Optional)
+            Ad Creative / Image {imageOnly ? <span className="text-violet-400">(Required)</span> : "(Optional)"}
           </span>
         </label>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* File Upload */}
+          {/* File Upload / Paste / Drop Zone */}
           <div
+            ref={dropZoneRef}
             onClick={() => fileInputRef.current?.click()}
-            className="upload-zone"
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            className={`upload-zone transition-all duration-200 ${
+              isDragging 
+                ? "border-violet-500 bg-violet-500/10 scale-[1.02]" 
+                : ""
+            }`}
           >
             <input
               ref={fileInputRef}
@@ -212,13 +413,31 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
               onChange={handleImageUpload}
               className="hidden"
             />
-            <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-            <p className="text-sm text-slate-400">
-              Click to upload or drag & drop
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              PNG, JPG, GIF up to 10MB
-            </p>
+            {isDragging ? (
+              <>
+                <Upload className="w-8 h-8 text-violet-400 mx-auto mb-2 animate-bounce" />
+                <p className="text-sm text-violet-400 font-medium">
+                  Drop image here
+                </p>
+              </>
+            ) : (
+              <>
+                <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                <p className="text-sm text-slate-400">
+                  Click, drag & drop, or paste
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <span className="px-2 py-0.5 bg-slate-700/50 rounded text-xs text-slate-400 flex items-center gap-1">
+                    <Clipboard className="w-3 h-3" />
+                    Ctrl+V
+                  </span>
+                  <span className="text-xs text-slate-500">to paste</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  PNG, JPG, GIF up to 10MB
+                </p>
+              </>
+            )}
           </div>
 
           {/* URL Input */}
@@ -270,11 +489,18 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
         {isLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Analyzing Compliance...
+            {imageOnly ? "Scanning Image..." : "Analyzing Compliance..."}
           </>
         ) : (
           <>
-            🔍 Check Compliance
+            {imageOnly ? (
+              <>
+                <ScanEye className="w-5 h-5" />
+                Scan Image
+              </>
+            ) : (
+              <>🔍 Check Compliance</>
+            )}
           </>
         )}
       </button>

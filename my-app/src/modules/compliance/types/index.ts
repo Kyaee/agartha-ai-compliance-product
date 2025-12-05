@@ -4,6 +4,8 @@ export type Severity = "critical" | "warning" | "info";
 
 export type Platform = "meta" | "google" | "tiktok";
 
+export type LLMProvider = "openai" | "gemini";
+
 export type ProductCategory =
   | "erectile_dysfunction"
   | "hair_loss"
@@ -54,6 +56,9 @@ export interface ComplianceReport {
   imageUrl?: string;
   summary: string;
   recommendations: string[];
+  // SightEngine moderation data
+  imageModerationScores?: SightEngineModerationScores;
+  imageSafetyScore?: number;
 }
 
 export interface SubmissionData {
@@ -76,5 +81,31 @@ export interface PolicyRule {
   suggestedAlternative?: string;
   platforms: Platform[] | "all";
   productCategories: ProductCategory[] | "all";
+}
+
+// SightEngine Image Moderation Types
+export interface SightEngineModerationScores {
+  nudity: {
+    sexual_activity: number;
+    sexual_display: number;
+    erotica: number;
+    very_suggestive: number;
+    suggestive: number;
+    none: number;
+  };
+  recreational_drug: number;
+  medical: number;
+  gore: number;
+  violence: number;
+  self_harm: number;
+  ai_generated: number;
+}
+
+export interface SightEngineResult {
+  requestId: string;
+  moderationScores: SightEngineModerationScores;
+  violations: ImageViolation[];
+  overallSafetyScore: number;
+  raw?: unknown;
 }
 

@@ -13,9 +13,19 @@ import {
   Target,
   ChevronDown,
   ChevronUp,
+  Shield,
+  Eye,
+  Pill,
+  Skull,
+  Swords,
+  Heart,
+  Sparkles,
+  Scan,
+  Bot,
+  Fingerprint,
 } from "lucide-react";
-import { useState } from "react";
-import type { ComplianceReport as ComplianceReportType, Violation, ImageViolation, Severity } from "../types";
+import { useState, useEffect } from "react";
+import type { ComplianceReport as ComplianceReportType, Violation, ImageViolation, Severity, SightEngineModerationScores } from "../types";
 import { PLATFORM_DISPLAY_NAMES, PRODUCT_CATEGORY_DISPLAY_NAMES } from "../constants/policies";
 
 interface ComplianceReportProps {
@@ -136,33 +146,33 @@ function ViolationCard({ violation, index }: { violation: Violation; index: numb
     <div className={`rounded-lg border ${config.borderColor} ${config.bgColor} overflow-hidden`}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+        className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 hover:bg-white/5 transition-colors gap-2 sm:gap-4"
       >
-        <div className="flex items-center gap-3">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full ${config.bgColor} ${config.color}`}>
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
+          <div className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${config.bgColor} ${config.color}`}>
             <Icon className="w-4 h-4" />
           </div>
-          <div className="text-left">
-            <div className="flex items-center gap-2">
+          <div className="text-left min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-xs font-semibold uppercase ${config.color}`}>
                 {violation.severity}
               </span>
-              <span className="text-slate-400">•</span>
+              <span className="text-slate-400 hidden sm:inline">•</span>
               <span className="text-sm text-slate-300">{violation.category}</span>
             </div>
-            <p className="text-sm text-slate-400 truncate max-w-md">
+            <p className="text-sm text-slate-400 truncate max-w-full sm:max-w-md">
               {violation.policyReference}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-between sm:justify-end pl-11 sm:pl-0">
           <span className="text-xs text-slate-500">
             {Math.round(violation.confidence * 100)}% confident
           </span>
           {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-slate-500" />
+            <ChevronUp className="w-4 h-4 text-slate-500 flex-shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500" />
+            <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />
           )}
         </div>
       </button>
@@ -239,6 +249,179 @@ function ImageViolationCard({ violation }: { violation: ImageViolation }) {
   );
 }
 
+function ModerationScoreBar({ 
+  label, 
+  score, 
+  icon: Icon, 
+  inverted = false 
+}: { 
+  label: string; 
+  score: number; 
+  icon: typeof Eye;
+  inverted?: boolean;
+}) {
+  // For inverted scores (like "safe" scores), higher is better
+  // For regular scores, lower is better
+  const displayScore = Math.round(score * 100);
+  const effectiveScore = inverted ? score : 1 - score;
+  
+  const getColor = () => {
+    if (effectiveScore >= 0.8) return { bar: "bg-green-500", text: "text-green-400" };
+    if (effectiveScore >= 0.5) return { bar: "bg-amber-500", text: "text-amber-400" };
+    return { bar: "bg-red-500", text: "text-red-400" };
+  };
+  
+  const { bar, text } = getColor();
+  
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2 text-slate-300">
+          <Icon className="w-4 h-4" />
+          <span>{label}</span>
+        </div>
+        <span className={`font-mono font-medium ${text}`}>
+          {inverted ? `${displayScore}%` : `${displayScore}%`}
+        </span>
+      </div>
+      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+        <div 
+          className={`h-full ${bar} transition-all duration-500 rounded-full`}
+          style={{ width: `${inverted ? displayScore : 100 - displayScore}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ImageModerationScores({ 
+  scores, 
+  safetyScore 
+}: { 
+  scores: SightEngineModerationScores;
+  safetyScore: number;
+}) {
+  // Calculate max nudity score for display
+  const maxNudity = Math.max(
+    scores.nudity.sexual_activity,
+    scores.nudity.sexual_display,
+    scores.nudity.erotica,
+    scores.nudity.very_suggestive,
+    scores.nudity.suggestive
+  );
+
+  const getSafetyColor = () => {
+    if (safetyScore >= 80) return { stroke: "#22c55e", bg: "bg-green-500/20", border: "border-green-500/30", text: "text-green-400" };
+    if (safetyScore >= 60) return { stroke: "#f59e0b", bg: "bg-amber-500/20", border: "border-amber-500/30", text: "text-amber-400" };
+    return { stroke: "#ef4444", bg: "bg-red-500/20", border: "border-red-500/30", text: "text-red-400" };
+  };
+
+  const safetyConfig = getSafetyColor();
+
+  return (
+    <div className="space-y-6">
+      {/* Safety Score Header */}
+      <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl ${safetyConfig.bg} border ${safetyConfig.border}`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-10 sm:w-12 h-10 sm:h-12 rounded-xl flex items-center justify-center ${safetyConfig.bg}`}>
+            <Shield className={`w-5 sm:w-6 h-5 sm:h-6 ${safetyConfig.text}`} />
+          </div>
+          <div>
+            <h4 className="font-semibold text-slate-200 text-sm sm:text-base">Image Safety Score</h4>
+            <p className="text-xs sm:text-sm text-slate-400">Powered by SightEngine AI</p>
+          </div>
+        </div>
+        <div className="text-center sm:text-right">
+          <div className={`text-2xl sm:text-3xl font-bold ${safetyConfig.text}`}>{safetyScore}%</div>
+          <div className="text-xs text-slate-500">
+            {safetyScore >= 80 ? "Safe" : safetyScore >= 60 ? "Review Needed" : "Issues Detected"}
+          </div>
+        </div>
+      </div>
+
+      {/* Moderation Categories */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-4">
+          <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Content Analysis</h5>
+          <div className="space-y-3 bg-slate-800/30 rounded-lg p-4 border border-slate-700/50">
+            <ModerationScoreBar 
+              label="Nudity/Sexual" 
+              score={maxNudity} 
+              icon={Eye}
+            />
+            <ModerationScoreBar 
+              label="Violence" 
+              score={scores.violence} 
+              icon={Swords}
+            />
+            <ModerationScoreBar 
+              label="Gore" 
+              score={scores.gore} 
+              icon={Skull}
+            />
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-4">
+          <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Safety Checks</h5>
+          <div className="space-y-3 bg-slate-800/30 rounded-lg p-4 border border-slate-700/50">
+            <ModerationScoreBar 
+              label="Recreational Drugs" 
+              score={scores.recreational_drug} 
+              icon={Pill}
+            />
+            <ModerationScoreBar 
+              label="Self-Harm" 
+              score={scores.self_harm} 
+              icon={Heart}
+            />
+            <ModerationScoreBar 
+              label="AI-Generated" 
+              score={scores.ai_generated} 
+              icon={Sparkles}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Nudity Breakdown (if any nudity detected) */}
+      {maxNudity > 0.1 && (
+        <div className="space-y-3">
+          <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Nudity Breakdown</h5>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {[
+              { label: "Sexual Activity", value: scores.nudity.sexual_activity },
+              { label: "Sexual Display", value: scores.nudity.sexual_display },
+              { label: "Erotica", value: scores.nudity.erotica },
+              { label: "Very Suggestive", value: scores.nudity.very_suggestive },
+              { label: "Suggestive", value: scores.nudity.suggestive },
+            ].map((item) => {
+              const percent = Math.round(item.value * 100);
+              const color = percent < 20 ? "text-green-400" : percent < 50 ? "text-amber-400" : "text-red-400";
+              return (
+                <div key={item.label} className="bg-slate-800/50 rounded-lg p-3 text-center">
+                  <div className={`text-lg font-bold ${color}`}>{percent}%</div>
+                  <div className="text-xs text-slate-500 mt-1">{item.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Safe Content Indicator */}
+      {scores.nudity.none > 0.8 && maxNudity < 0.1 && scores.violence < 0.1 && scores.gore < 0.1 && (
+        <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <CheckCircle className="w-5 h-5 text-green-400" />
+          <span className="text-sm text-green-300">Image content appears safe for advertising</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HighlightedText({ text, violations }: { text: string; violations: Violation[] }) {
   // Sort violations by start index
   const sortedViolations = [...violations]
@@ -296,14 +479,15 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
   ).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-slate-800/50 rounded-2xl border border-slate-700">
-        <div className="flex items-center gap-6">
+      <div className="flex flex-col items-center gap-6 p-4 sm:p-6 bg-slate-800/50 rounded-2xl border border-slate-700">
+        {/* Score and Status */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full">
           <ScoreGauge score={report.overallScore} status={report.status} />
-          <div>
+          <div className="text-center sm:text-left">
             <StatusBadge status={report.status} />
-            <div className="mt-4 flex items-center gap-4 text-sm text-slate-400">
+            <div className="mt-4 flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-sm text-slate-400">
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
                 {new Date(report.timestamp).toLocaleString()}
@@ -319,8 +503,9 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-4">
+        {/* Violation counts and action */}
+        <div className="flex flex-col items-center sm:items-end gap-3 w-full pt-4 border-t border-slate-700/50 sm:border-0 sm:pt-0">
+          <div className="flex items-center gap-4 flex-wrap justify-center">
             {criticalCount > 0 && (
               <div className="flex items-center gap-1 text-red-400">
                 <XCircle className="w-4 h-4" />
@@ -339,7 +524,7 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
           </p>
           <button
             onClick={onReset}
-            className="mt-2 px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+            className="w-full sm:w-auto mt-2 px-4 py-2.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
           >
             Check Another Ad
           </button>
@@ -391,6 +576,22 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
                 />
               ) : null
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Image Moderation Scores (SightEngine) */}
+      {report.imageModerationScores && report.imageSafetyScore !== undefined && (
+        <div className="space-y-4">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-200">
+            <Shield className="w-5 h-5 text-violet-400" />
+            Image Moderation Analysis
+          </h3>
+          <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700/50">
+            <ImageModerationScores 
+              scores={report.imageModerationScores} 
+              safetyScore={report.imageSafetyScore} 
+            />
           </div>
         </div>
       )}

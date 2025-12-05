@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { StagewiseToolbar } from "@/components/StagewiseToolbar";
 
 const instrumentSans = Instrument_Sans({
   variable: "--font-instrument-sans",
@@ -15,9 +16,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Healthcare Ad Compliance Gate | Agartha AI",
-  description: "AI-powered compliance checking for healthcare marketing content. Catch policy violations before they go live.",
-  keywords: ["healthcare", "compliance", "advertising", "marketing", "AI", "policy"],
+  title: "Agartha AI | Intelligent Compliance Automation",
+  description: "AI-powered compliance automation for modern business. Healthcare advertising, financial services, and data privacy compliance made simple.",
+  keywords: ["AI", "compliance", "automation", "healthcare", "advertising", "regulatory", "Agartha"],
 };
 
 export default function RootLayout({
@@ -31,6 +32,7 @@ export default function RootLayout({
         className={`${instrumentSans.variable} ${jetbrainsMono.variable} antialiased`}
         style={{ fontFamily: "var(--font-instrument-sans), system-ui, sans-serif" }}
       >
+        <StagewiseToolbar />
         {children}
       </body>
     </html>
