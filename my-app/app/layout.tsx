@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { StagewiseToolbar } from "@/components/StagewiseToolbar";
+
 
 const instrumentSans = Instrument_Sans({
   variable: "--font-instrument-sans",
@@ -32,7 +32,6 @@ export default function RootLayout({
         className={`${instrumentSans.variable} ${jetbrainsMono.variable} antialiased`}
         style={{ fontFamily: "var(--font-instrument-sans), system-ui, sans-serif" }}
       >
-        <StagewiseToolbar />
         {children}
       </body>
     </html>
