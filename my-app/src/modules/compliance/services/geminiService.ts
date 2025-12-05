@@ -96,10 +96,31 @@ Respond with valid JSON only.`;
 }
 
 /**
+ * Fetch image from URL and convert to base64
+ */
+async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string }> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status}`);
+  }
+  
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const base64Data = buffer.toString("base64");
+  
+  // Get mime type from response headers or default to jpeg
+  const contentType = response.headers.get("content-type") || "image/jpeg";
+  const mimeType = contentType.split(";")[0].trim();
+  
+  return { data: base64Data, mimeType };
+}
+
+/**
  * Analyze image compliance using Gemini API
+ * Supports both base64 encoded images and URLs
  */
 export async function analyzeImageComplianceWithGemini(
-  imageBase64: string,
+  imageSource: string,
   platform: Platform,
   apiKey: string,
   sightEngineData?: SightEngineModerationData
@@ -113,16 +134,29 @@ export async function analyzeImageComplianceWithGemini(
     },
   });
 
-  // Extract base64 data and mime type
-  let mimeType = "image/jpeg";
-  let base64Data = imageBase64;
+  // Determine if input is URL or base64
+  const isUrl = imageSource.startsWith("http://") || imageSource.startsWith("https://");
   
-  if (imageBase64.startsWith("data:")) {
-    const matches = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
+  let mimeType = "image/jpeg";
+  let base64Data: string;
+  
+  if (isUrl) {
+    // Fetch image from URL and convert to base64
+    const imageData = await fetchImageAsBase64(imageSource);
+    base64Data = imageData.data;
+    mimeType = imageData.mimeType;
+  } else if (imageSource.startsWith("data:")) {
+    // Extract from data URL
+    const matches = imageSource.match(/^data:([^;]+);base64,(.+)$/);
     if (matches) {
       mimeType = matches[1];
       base64Data = matches[2];
+    } else {
+      base64Data = imageSource;
     }
+  } else {
+    // Assume raw base64
+    base64Data = imageSource;
   }
 
   // Build prompt with SightEngine context if available

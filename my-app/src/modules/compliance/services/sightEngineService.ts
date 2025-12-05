@@ -57,7 +57,8 @@ interface SightEngineApiResponse {
   self_harm?: {
     prob: number;
   };
-  genai?: {
+  // AI-generated detection is returned under "type" field, not "genai"
+  type?: {
     ai_generated: number;
   };
   qr_content?: {
@@ -71,50 +72,22 @@ interface SightEngineApiResponse {
 }
 
 /**
- * Analyze an image using SightEngine API
- * Supports both URL and base64 encoded images
+ * Analyze an image by URL using SightEngine API (GET request)
+ * Use this when you have a publicly accessible image URL
  */
-export async function analyzeImageWithSightEngine(
-  imageSource: string
+export async function analyzeImageByUrl(
+  imageUrl: string
 ): Promise<SightEngineResult> {
-  const isBase64 = imageSource.startsWith("data:");
+  const params = new URLSearchParams({
+    url: imageUrl,
+    models: MODELS,
+    api_user: SIGHTENGINE_API_USER,
+    api_secret: SIGHTENGINE_API_SECRET,
+  });
   
-  let response: Response;
-  
-  if (isBase64) {
-    // For base64 images, use POST with form data
-    const base64Data = imageSource.split(",")[1] || imageSource;
-    const formData = new FormData();
-    
-    // Convert base64 to blob
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: "image/jpeg" });
-    
-    formData.append("media", blob, "image.jpg");
-    formData.append("models", MODELS);
-    formData.append("api_user", SIGHTENGINE_API_USER);
-    formData.append("api_secret", SIGHTENGINE_API_SECRET);
-    
-    response = await fetch("https://api.sightengine.com/1.0/check.json", {
-      method: "POST",
-      body: formData,
-    });
-  } else {
-    // For URL images, use GET
-    const params = new URLSearchParams({
-      url: imageSource,
-      models: MODELS,
-      api_user: SIGHTENGINE_API_USER,
-      api_secret: SIGHTENGINE_API_SECRET,
-    });
-    
-    response = await fetch(`${SIGHTENGINE_BASE_URL}?${params.toString()}`);
-  }
+  const response = await fetch(`${SIGHTENGINE_BASE_URL}?${params.toString()}`, {
+    method: "GET",
+  });
   
   if (!response.ok) {
     throw new Error(`SightEngine API error: ${response.status}`);
@@ -122,11 +95,90 @@ export async function analyzeImageWithSightEngine(
   
   const data: SightEngineApiResponse = await response.json();
   
+  // Debug: Log the full SightEngine response
+  console.log("[SightEngine URL] Full response:", JSON.stringify(data, null, 2));
+  
   if (data.status === "failure" && data.error) {
     throw new Error(`SightEngine error: ${data.error.message}`);
   }
   
   return parseSightEngineResponse(data);
+}
+
+/**
+ * Analyze an uploaded image using SightEngine API (POST request)
+ * Use this when you have a base64 encoded image from file upload
+ */
+export async function analyzeImageByUpload(
+  imageBase64: string
+): Promise<SightEngineResult> {
+  // Extract base64 data (remove data URL prefix if present)
+  const base64Data = imageBase64.includes(",") 
+    ? imageBase64.split(",")[1] 
+    : imageBase64;
+  
+  // Detect mime type from data URL prefix
+  let mimeType = "image/jpeg";
+  if (imageBase64.startsWith("data:")) {
+    const mimeMatch = imageBase64.match(/data:([^;]+);/);
+    if (mimeMatch) {
+      mimeType = mimeMatch[1];
+    }
+  }
+  
+  // Convert base64 to blob
+  const byteCharacters = atob(base64Data);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const extension = mimeType.split("/")[1] || "jpg";
+  const blob = new Blob([byteArray], { type: mimeType });
+  
+  // Create form data for POST request
+  const formData = new FormData();
+  formData.append("media", blob, `image.${extension}`);
+  formData.append("models", MODELS);
+  formData.append("api_user", SIGHTENGINE_API_USER);
+  formData.append("api_secret", SIGHTENGINE_API_SECRET);
+  
+  const response = await fetch("https://api.sightengine.com/1.0/check.json", {
+    method: "POST",
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`SightEngine API error: ${response.status}`);
+  }
+  
+  const data: SightEngineApiResponse = await response.json();
+  
+  // Debug: Log the full SightEngine response
+  console.log("[SightEngine Upload] Full response:", JSON.stringify(data, null, 2));
+  
+  if (data.status === "failure" && data.error) {
+    throw new Error(`SightEngine error: ${data.error.message}`);
+  }
+  
+  return parseSightEngineResponse(data);
+}
+
+/**
+ * Analyze an image using SightEngine API
+ * Automatically determines whether to use URL or upload method
+ * @param imageSource - Either a URL string or base64 encoded image
+ */
+export async function analyzeImageWithSightEngine(
+  imageSource: string
+): Promise<SightEngineResult> {
+  const isBase64 = imageSource.startsWith("data:");
+  
+  if (isBase64) {
+    return analyzeImageByUpload(imageSource);
+  } else {
+    return analyzeImageByUrl(imageSource);
+  }
 }
 
 /**
@@ -147,7 +199,7 @@ function parseSightEngineResponse(response: SightEngineApiResponse): SightEngine
     gore: response.gore?.prob ?? 0,
     violence: response.violence?.prob ?? 0,
     self_harm: response.self_harm?.prob ?? 0,
-    ai_generated: response.genai?.ai_generated ?? 0,
+    ai_generated: response.type?.ai_generated ?? 0,
   };
   
   const violations = generateViolationsFromScores(moderationScores);

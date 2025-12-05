@@ -71,7 +71,7 @@ export async function analyzeTextCompliance(
 }
 
 export async function analyzeImageCompliance(
-  imageBase64: string,
+  imageSource: string,
   platform: Platform,
   apiKey: string,
   sightEngineData?: SightEngineModerationData
@@ -80,6 +80,20 @@ export async function analyzeImageCompliance(
 
   // Build prompt with SightEngine context if available
   const systemPrompt = buildImageAnalysisPromptWithSightEngine(platform, sightEngineData);
+
+  // Determine the image URL format
+  // OpenAI accepts: http/https URLs directly, or data: URLs for base64
+  let imageUrl: string;
+  if (imageSource.startsWith("http://") || imageSource.startsWith("https://")) {
+    // Direct URL - OpenAI can fetch it
+    imageUrl = imageSource;
+  } else if (imageSource.startsWith("data:")) {
+    // Already a data URL
+    imageUrl = imageSource;
+  } else {
+    // Raw base64 - wrap in data URL
+    imageUrl = `data:image/jpeg;base64,${imageSource}`;
+  }
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
@@ -95,9 +109,7 @@ export async function analyzeImageCompliance(
           {
             type: "image_url",
             image_url: {
-              url: imageBase64.startsWith("data:")
-                ? imageBase64
-                : `data:image/jpeg;base64,${imageBase64}`,
+              url: imageUrl,
             },
           },
         ],

@@ -8,8 +8,11 @@ import {
   analyzeTextComplianceWithGemini,
   analyzeImageComplianceWithGemini,
 } from "@/modules/compliance/services/geminiService";
-import { analyzeImageWithSightEngine } from "@/modules/compliance/services/sightEngineService";
+import { analyzeImageByUpload, analyzeImageByUrl } from "@/modules/compliance/services/sightEngineService";
 import type { Platform, ProductCategory, SightEngineResult, LLMProvider } from "@/modules/compliance/types";
+
+// Default Gemini API key from environment
+const DEFAULT_GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,28 +54,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!apiKey) {
+    // Use default Gemini API key if not provided, require API key for OpenAI
+    const effectiveApiKey: string = provider === "gemini" 
+      ? (apiKey || DEFAULT_GEMINI_API_KEY) 
+      : apiKey;
+
+    if (provider === "openai" && !effectiveApiKey) {
       return NextResponse.json(
-        { error: `${provider === "gemini" ? "Gemini" : "OpenAI"} API key is required` },
+        { error: "OpenAI API key is required" },
+        { status: 400 }
+      );
+    }
+
+    if (provider === "gemini" && !effectiveApiKey) {
+      return NextResponse.json(
+        { error: "Gemini API key is not configured. Please set GEMINI_API_KEY environment variable." },
         { status: 400 }
       );
     }
 
     // Analyze image with SightEngine first (if image provided)
+    // Uses different methods for uploaded files vs URLs
     let sightEngineResult: SightEngineResult | undefined;
     let finalImageUrl = imageUrl;
 
     if (imageBase64) {
-      // Run SightEngine first to get moderation data
-      sightEngineResult = await analyzeImageWithSightEngine(imageBase64).catch((err) => {
-        console.error("SightEngine analysis failed:", err);
+      // For uploaded images: use POST with form data
+      sightEngineResult = await analyzeImageByUpload(imageBase64).catch((err) => {
+        console.error("SightEngine upload analysis failed:", err);
         return undefined;
       });
       finalImageUrl = imageBase64;
     } else if (imageUrl) {
-      // If only URL provided, run SightEngine on it
-      sightEngineResult = await analyzeImageWithSightEngine(imageUrl).catch((err) => {
-        console.error("SightEngine analysis failed:", err);
+      // For URL images: use GET with URL parameter
+      sightEngineResult = await analyzeImageByUrl(imageUrl).catch((err) => {
+        console.error("SightEngine URL analysis failed:", err);
         return undefined;
       });
     }
@@ -94,11 +110,12 @@ export async function POST(request: NextRequest) {
     let textAnalysis;
 
     if (imageOnly) {
-      // Image-only mode: only analyze the image
-      if (imageBase64) {
+      // Image-only mode: only analyze the image (supports both upload and URL)
+      const imageSource = imageBase64 || imageUrl;
+      if (imageSource) {
         imageAnalysis = provider === "gemini"
-          ? await analyzeImageComplianceWithGemini(imageBase64, platform, apiKey, sightEngineDataForPrompt)
-          : await analyzeImageCompliance(imageBase64, platform, apiKey, sightEngineDataForPrompt);
+          ? await analyzeImageComplianceWithGemini(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt)
+          : await analyzeImageCompliance(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt);
       }
       // Create empty text analysis for image-only mode
       textAnalysis = {
@@ -107,15 +124,17 @@ export async function POST(request: NextRequest) {
         summary: "Image-only scan completed.",
         recommendations: [],
       };
-    } else if (imageBase64) {
+    } else if (imageBase64 || imageUrl) {
       // Full mode with image: Run text and image analysis in parallel
+      const imageSource = imageBase64 || imageUrl!;
+      
       const textAnalysisPromise = provider === "gemini"
-        ? analyzeTextComplianceWithGemini(marketingCopy, platform, productCategory, apiKey)
-        : analyzeTextCompliance(marketingCopy, platform, productCategory, apiKey);
+        ? analyzeTextComplianceWithGemini(marketingCopy, platform, productCategory, effectiveApiKey)
+        : analyzeTextCompliance(marketingCopy, platform, productCategory, effectiveApiKey);
 
       const imageAnalysisPromise = provider === "gemini"
-        ? analyzeImageComplianceWithGemini(imageBase64, platform, apiKey, sightEngineDataForPrompt)
-        : analyzeImageCompliance(imageBase64, platform, apiKey, sightEngineDataForPrompt);
+        ? analyzeImageComplianceWithGemini(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt)
+        : analyzeImageCompliance(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt);
 
       const [textResult, imageResult] = await Promise.all([
         textAnalysisPromise,
@@ -127,8 +146,8 @@ export async function POST(request: NextRequest) {
     } else {
       // Full mode without image: just text analysis
       textAnalysis = provider === "gemini"
-        ? await analyzeTextComplianceWithGemini(marketingCopy, platform, productCategory, apiKey)
-        : await analyzeTextCompliance(marketingCopy, platform, productCategory, apiKey);
+        ? await analyzeTextComplianceWithGemini(marketingCopy, platform, productCategory, effectiveApiKey)
+        : await analyzeTextCompliance(marketingCopy, platform, productCategory, effectiveApiKey);
     }
 
     // Generate comprehensive report

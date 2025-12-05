@@ -177,7 +177,8 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
       }
     }
 
-    if (!apiKey.trim()) {
+    // Only require API key for OpenAI
+    if (provider === "openai" && !apiKey.trim()) {
       setError(`Please enter your ${LLM_PROVIDERS[provider].name} API key`);
       return;
     }
@@ -286,30 +287,28 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
         </div>
       </div>
 
-      {/* API Key Input */}
-      <div className="form-group">
-        <label htmlFor="apiKey" className="form-label">
-          <span className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-            <span>🔑 {LLM_PROVIDERS[provider].name} API Key</span>
-            <span className="text-xs font-normal text-slate-400">(stored locally only)</span>
-          </span>
-        </label>
-        <input
-          type="password"
-          id="apiKey"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder={LLM_PROVIDERS[provider].placeholder}
-          className="form-input"
-        />
-        <p className="text-xs text-slate-500 mt-2">
-          {provider === "gemini" ? (
-            <>Get your free API key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">Google AI Studio</a></>
-          ) : (
-            <>Get your API key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">OpenAI Platform</a></>
-          )}
-        </p>
-      </div>
+      {/* API Key Input - Only show for OpenAI */}
+      {provider === "openai" && (
+        <div className="form-group">
+          <label htmlFor="apiKey" className="form-label">
+            <span className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <span>🔑 {LLM_PROVIDERS[provider].name} API Key</span>
+              <span className="text-xs font-normal text-slate-400">(stored locally only)</span>
+            </span>
+          </label>
+          <input
+            type="password"
+            id="apiKey"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={LLM_PROVIDERS[provider].placeholder}
+            className="form-input"
+          />
+          <p className="text-xs text-slate-500 mt-2">
+            Get your API key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">OpenAI Platform</a>
+          </p>
+        </div>
+      )}
 
       {/* Platform & Category Selection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -395,16 +394,16 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
           {/* File Upload / Paste / Drop Zone */}
           <div
             ref={dropZoneRef}
-            onClick={() => fileInputRef.current?.click()}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
+            onClick={() => !imageUrl && fileInputRef.current?.click()}
+            onDragEnter={!imageUrl ? handleDragEnter : undefined}
+            onDragLeave={!imageUrl ? handleDragLeave : undefined}
+            onDragOver={!imageUrl ? handleDragOver : undefined}
+            onDrop={!imageUrl ? handleDrop : undefined}
             className={`upload-zone transition-all duration-200 ${
               isDragging 
                 ? "border-violet-500 bg-violet-500/10 scale-[1.02]" 
                 : ""
-            }`}
+            } ${imageUrl ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <input
               ref={fileInputRef}
@@ -412,6 +411,7 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
               accept="image/*"
               onChange={handleImageUpload}
               className="hidden"
+              disabled={!!imageUrl}
             />
             {isDragging ? (
               <>
@@ -422,17 +422,19 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
               </>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">
-                  Click, drag & drop, or paste
+                <Upload className={`w-8 h-8 mx-auto mb-2 ${imageUrl ? "text-slate-600" : "text-slate-500"}`} />
+                <p className={`text-sm ${imageUrl ? "text-slate-600" : "text-slate-400"}`}>
+                  {imageUrl ? "Clear URL to upload file" : "Click, drag & drop, or paste"}
                 </p>
-                <div className="flex items-center justify-center gap-2 mt-2">
-                  <span className="px-2 py-0.5 bg-slate-700/50 rounded text-xs text-slate-400 flex items-center gap-1">
-                    <Clipboard className="w-3 h-3" />
-                    Ctrl+V
-                  </span>
-                  <span className="text-xs text-slate-500">to paste</span>
-                </div>
+                {!imageUrl && (
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <span className="px-2 py-0.5 bg-slate-700/50 rounded text-xs text-slate-400 flex items-center gap-1">
+                      <Clipboard className="w-3 h-3" />
+                      Ctrl+V
+                    </span>
+                    <span className="text-xs text-slate-500">to paste</span>
+                  </div>
+                )}
                 <p className="text-xs text-slate-500 mt-2">
                   PNG, JPG, GIF up to 10MB
                 </p>
@@ -442,13 +444,16 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
 
           {/* URL Input */}
           <div className="flex flex-col justify-center">
-            <label className="text-xs text-slate-400 mb-2">Or enter image URL:</label>
+            <label className={`text-xs mb-2 ${imageFile ? "text-slate-600" : "text-slate-400"}`}>
+              {imageFile ? "Clear uploaded image to use URL" : "Or enter image URL:"}
+            </label>
             <input
               type="url"
               value={imageUrl}
               onChange={(e) => handleImageUrlChange(e.target.value)}
               placeholder="https://example.com/image.jpg"
-              className="form-input"
+              className={`form-input ${imageFile ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={!!imageFile}
             />
           </div>
         </div>
