@@ -152,7 +152,7 @@ export default function AgarthaCompliance() {
               </Link>
               <div className="h-6 w-px bg-slate-700" />
               <div className="flex items-center gap-2 group">
-                <div className="w-8 h-8 bg-linear-to-br from-violet-500 to-fuchsia-500 rounded-lg flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-shadow duration-300">
+                <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-lg flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-shadow duration-300">
                   <Brain className="w-4 h-4 text-white" />
                 </div>
                 <span className="font-semibold text-white hidden sm:inline">Agartha AI</span>
@@ -183,12 +183,12 @@ export default function AgarthaCompliance() {
           }`}
         >
           <div 
-            className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-linear-to-br from-violet-500 to-fuchsia-600 rounded-2xl sm:rounded-3xl mb-5 shadow-2xl shadow-violet-500/30 animate-float"
+            className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-2xl sm:rounded-3xl mb-5 shadow-2xl shadow-violet-500/30 animate-float"
           >
             <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3">
-            <span className="bg-linear-to-r from-white via-violet-100 to-fuchsia-200 bg-clip-text text-transparent animate-gradient">
+            <span className="bg-gradient-to-r from-white via-violet-100 to-fuchsia-200 bg-clip-text text-transparent animate-gradient">
               Healthcare Ad Compliance
             </span>
           </h1>
@@ -210,7 +210,7 @@ export default function AgarthaCompliance() {
           <div className="relative p-1.5 bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-700/50 shadow-xl">
             {/* Animated Tab Indicator */}
             <div 
-              className="absolute top-1.5 bottom-1.5 rounded-xl bg-linear-to-r from-violet-600 to-fuchsia-600 shadow-lg shadow-violet-500/30 transition-all duration-500 ease-out"
+              className="absolute top-1.5 bottom-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-lg shadow-violet-500/30 transition-all duration-500 ease-out"
               style={{
                 left: activeTab === "analyze" ? "6px" : "calc(50% + 3px)",
                 width: "calc(50% - 9px)",
@@ -265,7 +265,7 @@ export default function AgarthaCompliance() {
                     ) : (
                       <AlertTriangle className="w-3.5 h-3.5" />
                     )}
-                    {report.textViolations.length} 
+                    {report.textViolations.length} {report.textViolations.length === 1 ? "issue" : "issues"}
                   </span>
                 )}
               </button>
@@ -290,7 +290,7 @@ export default function AgarthaCompliance() {
                 }}
               />
             </div>
-            <div className="absolute inset-0 rounded-3xl p-px bg-linear-to-b from-slate-600/30 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute inset-0 rounded-3xl p-px bg-gradient-to-b from-slate-600/30 via-transparent to-transparent pointer-events-none" />
             
             {/* Content */}
             <div className="relative p-5 sm:p-8">
@@ -301,7 +301,7 @@ export default function AgarthaCompliance() {
                   <div className="animate-fade-in-up">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-700/50">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-linear-to-br from-violet-500/20 to-fuchsia-500/20 rounded-xl flex items-center justify-center border border-violet-500/20 animate-pulse-subtle">
+                        <div className="w-12 h-12 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 rounded-xl flex items-center justify-center border border-violet-500/20 animate-pulse-subtle">
                           <ScanSearch className="w-6 h-6 text-violet-400" />
                         </div>
                         <div>
@@ -331,10 +331,10 @@ export default function AgarthaCompliance() {
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all duration-500 ${
                           report.status === "pass" 
-                            ? "bg-linear-to-br from-green-500/20 to-emerald-500/20 border-green-500/20" 
+                            ? "bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-green-500/20" 
                             : report.status === "fail" 
-                              ? "bg-linear-to-br from-red-500/20 to-rose-500/20 border-red-500/20" 
-                              : "bg-linear-to-br from-amber-500/20 to-yellow-500/20 border-amber-500/20"
+                              ? "bg-gradient-to-br from-red-500/20 to-rose-500/20 border-red-500/20" 
+                              : "bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border-amber-500/20"
                         } ${report.status === "pass" ? "animate-success-pop" : report.status === "fail" ? "animate-error-shake" : "animate-pulse-subtle"}`}>
                           {report.status === "pass" ? (
                             <CheckCircle2 className="w-6 h-6 text-green-400" />
@@ -353,7 +353,7 @@ export default function AgarthaCompliance() {
                       </div>
                       <button
                         onClick={handleNewAnalysis}
-                        className="group flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-sm text-white font-semibold transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
+                        className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-sm text-white font-semibold transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
                       >
                         <Zap className="w-4 h-4" />
                         New Analysis
@@ -376,7 +376,7 @@ export default function AgarthaCompliance() {
                     </p>
                     <button
                       onClick={() => handleTabChange("analyze")}
-                      className="group inline-flex items-center gap-2 px-8 py-3 bg-linear-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-white font-semibold transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
+                      className="group inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-white font-semibold transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
                     >
                       <ScanSearch className="w-5 h-5" />
                       Start Analysis

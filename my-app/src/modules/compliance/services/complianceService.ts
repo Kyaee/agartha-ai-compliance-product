@@ -13,7 +13,7 @@ import type {
   SightEngineResult,
 } from "../types";
 
-export interface TextAnalysisResult {
+interface TextAnalysisResult {
   violations: Violation[];
   missingDisclaimers: Omit<Violation, "offendingText" | "startIndex" | "endIndex">[];
   recommendations: string[];
