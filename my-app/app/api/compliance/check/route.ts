@@ -3,6 +3,7 @@ import {
   analyzeTextCompliance,
   analyzeImageCompliance,
   generateComplianceReport,
+  type TextAnalysisResult,
 } from "@/modules/compliance/services/complianceService";
 import {
   analyzeTextComplianceWithGemini,
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     // Analyze based on mode
     let imageAnalysis;
-    let textAnalysis;
+    let textAnalysis: TextAnalysisResult;
     let imageTextAnalysis;
 
     if (imageOnly) {
