@@ -41,6 +41,7 @@ export interface ImageViolation extends Violation {
     | "negative_body_image"
     | "graphic_content"
     | "misleading_imagery";
+  sourceUrl?: string; // Reference URL for policy citation
 }
 
 export interface ComplianceReport {
@@ -50,10 +51,14 @@ export interface ComplianceReport {
   status: "pass" | "fail" | "review";
   textViolations: Violation[];
   imageViolations: ImageViolation[];
+  // Violations found in text extracted from image (OCR)
+  imageTextViolations?: Violation[];
   platform: Platform;
   productCategory: ProductCategory;
   originalText: string;
   imageUrl?: string;
+  // Text extracted from image via OCR
+  extractedImageText?: string;
   summary: string;
   recommendations: string[];
   // SightEngine moderation data
@@ -99,6 +104,7 @@ export interface SightEngineModerationScores {
   violence: number;
   self_harm: number;
   ai_generated: number;
+  offensive: number; // Offensive content detection score
 }
 
 export interface SightEngineResult {
@@ -106,6 +112,10 @@ export interface SightEngineResult {
   moderationScores: SightEngineModerationScores;
   violations: ImageViolation[];
   overallSafetyScore: number;
+  // OCR - Extracted text from image
+  extractedText?: string;
+  hasProfanity?: boolean;
+  profanityMatches?: string[];
   raw?: unknown;
 }
 

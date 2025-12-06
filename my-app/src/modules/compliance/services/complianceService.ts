@@ -13,7 +13,7 @@ import type {
   SightEngineResult,
 } from "../types";
 
-interface TextAnalysisResult {
+export interface TextAnalysisResult {
   violations: Violation[];
   missingDisclaimers: Omit<Violation, "offendingText" | "startIndex" | "endIndex">[];
   recommendations: string[];
@@ -169,9 +169,11 @@ export function generateComplianceReport(
   textAnalysis: TextAnalysisResult,
   imageAnalysis?: ImageAnalysisResult,
   imageUrl?: string,
-  sightEngineResult?: SightEngineResult
+  sightEngineResult?: SightEngineResult,
+  imageTextAnalysis?: TextAnalysisResult,
+  extractedImageText?: string
 ): ComplianceReport {
-  // Combine violations and missing disclaimers
+  // Combine violations and missing disclaimers from main text analysis
   const allTextViolations: Violation[] = [
     ...textAnalysis.violations,
     ...textAnalysis.missingDisclaimers.map((d) => ({
@@ -187,12 +189,28 @@ export function generateComplianceReport(
   const sightEngineViolations = sightEngineResult?.violations || [];
   const imageViolations = [...gptImageViolations, ...sightEngineViolations];
 
-  const { score, status } = calculateComplianceScore(allTextViolations, imageViolations);
+  // Process image text violations (from OCR)
+  const imageTextViolations: Violation[] = imageTextAnalysis ? [
+    ...imageTextAnalysis.violations.map(v => ({
+      ...v,
+      category: `Image Text: ${v.category}`,
+    })),
+    ...imageTextAnalysis.missingDisclaimers.map((d) => ({
+      ...d,
+      category: `Image Text: ${d.category}`,
+      offendingText: undefined,
+      startIndex: undefined,
+      endIndex: undefined,
+    })),
+  ] : [];
+
+  const { score, status } = calculateComplianceScore(allTextViolations);
 
   // Combine recommendations
   const recommendations = [
     ...textAnalysis.recommendations,
     ...(imageAnalysis?.imageRecommendations || []),
+    ...(imageTextAnalysis?.recommendations || []),
   ];
 
   // Add SightEngine-specific recommendations
@@ -202,10 +220,18 @@ export function generateComplianceReport(
     );
   }
 
+  // Add OCR-specific recommendations
+  if (extractedImageText && imageTextViolations.length > 0) {
+    recommendations.push(
+      "Text detected in the image contains compliance issues. Review and update the image text to meet advertising guidelines."
+    );
+  }
+
   // Generate summary based on analysis results
-  const totalIssues = allTextViolations.length + imageViolations.length;
-  const criticalCount = [...allTextViolations, ...imageViolations].filter(v => v.severity === "critical").length;
-  const warningCount = [...allTextViolations, ...imageViolations].filter(v => v.severity === "warning").length;
+  const totalIssues = allTextViolations.length + imageViolations.length + imageTextViolations.length;
+  const allViolations = [...allTextViolations, ...imageViolations, ...imageTextViolations];
+  const criticalCount = allViolations.filter(v => v.severity === "critical").length;
+  const warningCount = allViolations.filter(v => v.severity === "warning").length;
   
   let summary: string;
   if (totalIssues === 0) {
@@ -232,10 +258,12 @@ export function generateComplianceReport(
     status,
     textViolations: allTextViolations,
     imageViolations,
+    imageTextViolations: imageTextViolations.length > 0 ? imageTextViolations : undefined,
     platform,
     productCategory,
     originalText,
     imageUrl,
+    extractedImageText: extractedImageText || undefined,
     summary,
     recommendations,
     imageModerationScores: sightEngineResult?.moderationScores,

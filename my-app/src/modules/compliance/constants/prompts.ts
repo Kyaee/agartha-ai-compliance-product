@@ -3,6 +3,9 @@
 import { POLICY_RULES } from "./policies";
 import type { Platform, ProductCategory } from "../types";
 
+// ASC Guidebook reference for citations
+const ASC_GUIDEBOOK_URL = "https://asc.com.ph/wp-content/uploads/2016/06/ASC_Guidebook.pdf";
+
 export function buildSystemPrompt(platform: Platform, productCategory: ProductCategory): string {
   const relevantRules = POLICY_RULES.filter((rule) => {
     const platformMatch = rule.platforms === "all" || rule.platforms.includes(platform);
@@ -32,6 +35,11 @@ export function buildSystemPrompt(platform: Platform, productCategory: ProductCa
 ## Current Context
 - **Platform**: ${platform.toUpperCase()}
 - **Product Category**: ${productCategory.replace(/_/g, " ")}
+
+## Regulatory References
+When citing policy violations, reference the ASC Advertising Standards Guidelines where applicable:
+- Source: ASC Guidebook (${ASC_GUIDEBOOK_URL})
+- Key principles: Truthfulness, fairness, and social responsibility in advertising
 
 ## Policy Rules to Enforce
 
@@ -174,8 +182,6 @@ export function buildImageAnalysisPromptWithSightEngine(
   platform: string,
   sightEngineData?: SightEngineModerationData
 ): string {
-  let sightEngineContext = "";
-  
   // Calculate maxNudity at function level so it's available throughout
   const maxNudity = sightEngineData ? Math.max(
     sightEngineData.nudity.sexual_activity,
@@ -184,106 +190,126 @@ export function buildImageAnalysisPromptWithSightEngine(
     sightEngineData.nudity.very_suggestive,
     sightEngineData.nudity.suggestive
   ) : 0;
+
+  let sightEngineAnalysis = "";
   
   if (sightEngineData) {
-    sightEngineContext = `
-## SightEngine Moderation Results (Pre-scan)
-The image has been pre-scanned by SightEngine AI moderation. Use these results to inform your analysis:
+    // Build detailed analysis based on SightEngine scores
+    const issues: string[] = [];
+    
+    if (maxNudity > 0.3) {
+      issues.push(`- **Nudity/Suggestive Content Detected** (${Math.round(maxNudity * 100)}%): The image contains potentially inappropriate content that may violate platform advertising policies.`);
+    }
+    
+    if (sightEngineData.violence > 0.2) {
+      issues.push(`- **Violence Detected** (${Math.round(sightEngineData.violence * 100)}%): The image may contain violent imagery which is restricted in healthcare advertising.`);
+    }
+    
+    if (sightEngineData.gore > 0.1) {
+      issues.push(`- **Graphic Content Detected** (${Math.round(sightEngineData.gore * 100)}%): The image contains graphic or disturbing content.`);
+    }
+    
+    if (sightEngineData.recreational_drug > 0.2) {
+      issues.push(`- **Drug-Related Content** (${Math.round(sightEngineData.recreational_drug * 100)}%): The image may depict recreational drugs or paraphernalia.`);
+    }
+    
+    if (sightEngineData.self_harm > 0.1) {
+      issues.push(`- **Self-Harm Content** (${Math.round(sightEngineData.self_harm * 100)}%): The image may contain self-harm related content which is strictly prohibited.`);
+    }
+    
+    if (sightEngineData.ai_generated > 0.7) {
+      issues.push(`- **AI-Generated Image** (${Math.round(sightEngineData.ai_generated * 100)}%): This appears to be AI-generated content. Per ASC Guidelines, this should be disclosed.`);
+    }
 
-**Overall Safety Score: ${sightEngineData.overallSafetyScore}%** (100% = completely safe)
+    sightEngineAnalysis = `
+## SightEngine AI Moderation Results
 
-**Content Detection Scores** (0% = not detected, 100% = definitely detected):
-- Nudity/Sexual Content: ${Math.round(maxNudity * 100)}%
-  - Sexual Activity: ${Math.round(sightEngineData.nudity.sexual_activity * 100)}%
-  - Sexual Display: ${Math.round(sightEngineData.nudity.sexual_display * 100)}%
-  - Erotica: ${Math.round(sightEngineData.nudity.erotica * 100)}%
-  - Very Suggestive: ${Math.round(sightEngineData.nudity.very_suggestive * 100)}%
-  - Suggestive: ${Math.round(sightEngineData.nudity.suggestive * 100)}%
-  - None/Safe: ${Math.round(sightEngineData.nudity.none * 100)}%
-- Violence: ${Math.round(sightEngineData.violence * 100)}%
-- Gore/Graphic: ${Math.round(sightEngineData.gore * 100)}%
-- Recreational Drugs: ${Math.round(sightEngineData.recreational_drug * 100)}%
-- Self-Harm: ${Math.round(sightEngineData.self_harm * 100)}%
-- Medical Content: ${Math.round(sightEngineData.medical * 100)}%
-- AI-Generated: ${Math.round(sightEngineData.ai_generated * 100)}%
+The image has been pre-analyzed by SightEngine. Here is the detailed assessment:
 
-**Important**: Use these scores to:
-1. Confirm or refine your visual analysis
-2. Flag any high-scoring categories (>30%) as potential violations
-3. If AI-generated score is high (>70%), note this for disclosure requirements
-4. Consider the overall safety score when determining compliance severity
+**Overall Image Safety Score: ${sightEngineData.overallSafetyScore}%**
+${sightEngineData.overallSafetyScore >= 80 ? "✅ Image appears generally safe for advertising use." : sightEngineData.overallSafetyScore >= 50 ? "⚠️ Image requires review - potential issues detected." : "❌ Image has significant compliance concerns."}
+
+### Detected Content Scores:
+| Category | Score | Status |
+|----------|-------|--------|
+| Nudity/Sexual | ${Math.round(maxNudity * 100)}% | ${maxNudity < 0.1 ? "✅ Safe" : maxNudity < 0.3 ? "⚠️ Review" : "❌ Issue"} |
+| Violence | ${Math.round(sightEngineData.violence * 100)}% | ${sightEngineData.violence < 0.1 ? "✅ Safe" : sightEngineData.violence < 0.3 ? "⚠️ Review" : "❌ Issue"} |
+| Gore/Graphic | ${Math.round(sightEngineData.gore * 100)}% | ${sightEngineData.gore < 0.1 ? "✅ Safe" : "❌ Issue"} |
+| Recreational Drugs | ${Math.round(sightEngineData.recreational_drug * 100)}% | ${sightEngineData.recreational_drug < 0.1 ? "✅ Safe" : "❌ Issue"} |
+| Self-Harm | ${Math.round(sightEngineData.self_harm * 100)}% | ${sightEngineData.self_harm < 0.05 ? "✅ Safe" : "❌ Issue"} |
+| Medical Content | ${Math.round(sightEngineData.medical * 100)}% | ${sightEngineData.medical < 0.3 ? "✅ Safe" : "⚠️ Review"} |
+| AI-Generated | ${Math.round(sightEngineData.ai_generated * 100)}% | ${sightEngineData.ai_generated < 0.5 ? "Likely Real" : "Likely AI"} |
+
+${issues.length > 0 ? `### Key Issues Identified:\n${issues.join("\n")}` : "### No significant issues detected by automated moderation."}
+
+## Regulatory Reference
+Per the **ASC Advertising Standards Guidelines** (${ASC_GUIDEBOOK_URL}):
+- All advertising must be truthful and not misleading
+- Visual representations must be accurate and not exaggerated
+- Before/after comparisons require substantiation
+- AI-generated or manipulated images should be disclosed
 `;
   }
 
-  return `You are an expert healthcare advertising compliance analyst specializing in visual content review.
+  return `You are an expert healthcare advertising compliance analyst. Provide a detailed, professional analysis of this image for advertising compliance.
 
-## Your Task
-Analyze the provided image for healthcare advertising compliance issues.
-Platform: ${platform.toUpperCase()}
-${sightEngineContext}
-## Issues to Identify
+## Platform: ${platform.toUpperCase()}
 
-### 1. Before/After Comparisons
-- Side-by-side transformation photos
-- Split images showing "before" and "after" states
-- Sequence images implying dramatic change
-- These are PROHIBITED on most platforms for health/weight products
+${sightEngineAnalysis}
 
-### 2. Negative Body Imagery
-- Images that shame or mock body types
-- Unflattering "before" poses designed to look bad
-- Red circles or arrows pointing to "problem areas"
-- Imagery that could cause body image issues
+## Your Analysis Task
 
-### 3. Nudity or Sensitive Content
-- Excessive skin exposure
-- Suggestive poses
-- Content inappropriate for general audiences
-${sightEngineData && maxNudity > 0.2 ? `\n**NOTE**: SightEngine detected elevated nudity/suggestive content scores. Pay extra attention to this category.` : ""}
+Based on the SightEngine pre-scan results above, provide your expert visual analysis. Focus on:
 
-### 4. Misleading Imagery
-- Doctored or photoshopped transformations
-- Stock photos presented as real testimonials
-- Medical imagery used inappropriately
-- Unrealistic body proportions
-${sightEngineData && sightEngineData.ai_generated > 0.5 ? `\n**NOTE**: SightEngine detected this may be AI-generated (${Math.round(sightEngineData.ai_generated * 100)}%). Consider if disclosure is needed.` : ""}
+### 1. Before/After Comparisons (CRITICAL for ${platform.toUpperCase()})
+- Look for side-by-side transformation imagery
+- Identify any "before" and "after" visual comparisons
+- Per ASC Guidelines and platform policies, before/after imagery is restricted in health product advertising
+- Reference: ASC Guidebook Section on Comparative Advertising
 
-### 5. Medical/Graphic Content
-- Graphic medical procedures
-- Disturbing before conditions
-- Images that could cause distress
-${sightEngineData && (sightEngineData.gore > 0.1 || sightEngineData.medical > 0.5) ? `\n**NOTE**: SightEngine detected medical/graphic content. Review carefully.` : ""}
+### 2. Body Image & Representation
+- Check for negative body portrayal
+- Identify any body-shaming visual elements
+- Verify realistic body proportions
 
-### 6. Drug/Substance Content
-${sightEngineData && sightEngineData.recreational_drug > 0.2 ? `**WARNING**: SightEngine detected possible drug-related content (${Math.round(sightEngineData.recreational_drug * 100)}%). This is likely a policy violation.` : "- Any depiction of recreational drugs or paraphernalia"}
+### 3. Content Appropriateness
+- Assess nudity/skin exposure levels based on SightEngine scores
+- Evaluate if content is suitable for general audiences
+- Check for any suggestive positioning or framing
 
-### 7. Self-Harm Content
-${sightEngineData && sightEngineData.self_harm > 0.1 ? `**CRITICAL**: SightEngine detected possible self-harm related content (${Math.round(sightEngineData.self_harm * 100)}%). This requires immediate attention.` : "- Any imagery that could promote self-harm"}
+### 4. Image Authenticity
+- If AI-generated score is high, flag for disclosure requirement
+- Check for signs of photo manipulation
+- Verify if transformations appear realistic
+
+### 5. Medical/Healthcare Imagery
+- Ensure medical imagery is appropriate
+- Check for graphic or disturbing content
+- Verify professional medical representation
 
 ## Response Format
-Respond with a JSON object:
+Provide your analysis as JSON:
 {
   "imageViolations": [
     {
-      "id": "img-violation-id",
+      "id": "unique-id",
       "severity": "critical" | "warning" | "info",
-      "category": "Restricted Imagery",
+      "category": "Category name",
       "imageIssueType": "before_after" | "nudity" | "negative_body_image" | "graphic_content" | "misleading_imagery",
-      "policyReference": "Policy reference",
-      "policyDescription": "Description of the visual issue",
-      "suggestedFix": "How to fix the image issue",
+      "policyReference": "ASC Guidebook / Platform Policy Reference",
+      "policyDescription": "Detailed explanation of the violation and why it matters",
+      "suggestedFix": "Specific, actionable recommendation to fix the issue",
       "confidence": 0.0-1.0,
-      "imageRegion": {
-        "x": 0-100 (percentage),
-        "y": 0-100 (percentage),
-        "width": 0-100 (percentage),
-        "height": 0-100 (percentage)
-      }
+      "sourceUrl": "${ASC_GUIDEBOOK_URL}"
     }
   ],
-  "imageRecommendations": ["List of visual improvements"]
+  "imageRecommendations": ["Detailed recommendations for compliance"]
 }
 
-If the image appears compliant, return an empty imageViolations array. Do not include any summary.`;
+IMPORTANT: 
+- Base your analysis on the SightEngine scores provided
+- Only flag issues with supporting evidence from the moderation data
+- Provide actionable, specific fixes
+- Reference ASC Guidelines where applicable
+- If the image appears compliant, return empty imageViolations array`;
 }
-

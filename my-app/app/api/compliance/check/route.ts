@@ -3,6 +3,7 @@ import {
   analyzeTextCompliance,
   analyzeImageCompliance,
   generateComplianceReport,
+  type TextAnalysisResult,
 } from "@/modules/compliance/services/complianceService";
 import {
   analyzeTextComplianceWithGemini,
@@ -105,9 +106,13 @@ export async function POST(request: NextRequest) {
       overallSafetyScore: sightEngineResult.overallSafetyScore,
     } : undefined;
 
+    // Get extracted text from image (OCR) if available
+    const extractedImageText = sightEngineResult?.extractedText || "";
+
     // Analyze based on mode
     let imageAnalysis;
-    let textAnalysis;
+    let textAnalysis: TextAnalysisResult;
+    let imageTextAnalysis;
 
     if (imageOnly) {
       // Image-only mode: only analyze the image (supports both upload and URL)
@@ -117,32 +122,61 @@ export async function POST(request: NextRequest) {
           ? await analyzeImageComplianceWithGemini(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt)
           : await analyzeImageCompliance(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt);
       }
+      
+      // If OCR extracted text from the image, analyze it too
+      if (extractedImageText && extractedImageText.length > 10) {
+        console.log("[OCR] Analyzing extracted image text:", extractedImageText);
+        imageTextAnalysis = provider === "gemini"
+          ? await analyzeTextComplianceWithGemini(extractedImageText, platform, productCategory, effectiveApiKey).catch(err => {
+              console.error("Image text analysis failed:", err);
+              return null;
+            })
+          : await analyzeTextCompliance(extractedImageText, platform, productCategory, effectiveApiKey).catch(err => {
+              console.error("Image text analysis failed:", err);
+              return null;
+            });
+      }
+      
       // Create empty text analysis for image-only mode
       textAnalysis = {
         violations: [],
         missingDisclaimers: [],
-        summary: "Image-only scan completed.",
         recommendations: [],
       };
     } else if (imageBase64 || imageUrl) {
       // Full mode with image: Run text and image analysis in parallel
       const imageSource = imageBase64 || imageUrl!;
       
-      const textAnalysisPromise = provider === "gemini"
-        ? analyzeTextComplianceWithGemini(marketingCopy, platform, productCategory, effectiveApiKey)
-        : analyzeTextCompliance(marketingCopy, platform, productCategory, effectiveApiKey);
-
-      const imageAnalysisPromise = provider === "gemini"
-        ? analyzeImageComplianceWithGemini(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt)
-        : analyzeImageCompliance(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt);
-
-      const [textResult, imageResult] = await Promise.all([
-        textAnalysisPromise,
-        imageAnalysisPromise,
-      ]);
+      const analysisPromises: Promise<unknown>[] = [
+        provider === "gemini"
+          ? analyzeTextComplianceWithGemini(marketingCopy, platform, productCategory, effectiveApiKey)
+          : analyzeTextCompliance(marketingCopy, platform, productCategory, effectiveApiKey),
+        provider === "gemini"
+          ? analyzeImageComplianceWithGemini(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt)
+          : analyzeImageCompliance(imageSource, platform, effectiveApiKey, sightEngineDataForPrompt),
+      ];
       
-      textAnalysis = textResult;
-      imageAnalysis = imageResult;
+      // If OCR extracted text from the image, analyze it too
+      if (extractedImageText && extractedImageText.length > 10) {
+        console.log("[OCR] Analyzing extracted image text:", extractedImageText);
+        analysisPromises.push(
+          provider === "gemini"
+            ? analyzeTextComplianceWithGemini(extractedImageText, platform, productCategory, effectiveApiKey).catch(err => {
+                console.error("Image text analysis failed:", err);
+                return null;
+              })
+            : analyzeTextCompliance(extractedImageText, platform, productCategory, effectiveApiKey).catch(err => {
+                console.error("Image text analysis failed:", err);
+                return null;
+              })
+        );
+      }
+
+      const results = await Promise.all(analysisPromises);
+      
+      textAnalysis = results[0] as typeof textAnalysis;
+      imageAnalysis = results[1] as typeof imageAnalysis;
+      imageTextAnalysis = results[2] as typeof imageTextAnalysis;
     } else {
       // Full mode without image: just text analysis
       textAnalysis = provider === "gemini"
@@ -158,7 +192,9 @@ export async function POST(request: NextRequest) {
       textAnalysis,
       imageAnalysis,
       finalImageUrl,
-      sightEngineResult
+      sightEngineResult,
+      imageTextAnalysis || undefined,
+      extractedImageText || undefined
     );
 
     return NextResponse.json(report);
