@@ -71,7 +71,7 @@ export default function LandingPage() {
 
             {/* Headline */}
             <h1 
-              className={`text-3xl sm:text-5xl lg:text-7xl font-bold leading-[1.15] sm:leading-[1.1] mb-4 sm:mb-6 transition-all duration-700 delay-100 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+              className={`text-2xl sm:text-5xl lg:text-7xl font-bold leading-[1.2] sm:leading-[1.1] mb-4 sm:mb-6 px-2 sm:px-0 transition-all duration-700 delay-100 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
             >
               <span className="text-white">AI-Powered </span>
               <span className="text-violet-400">
@@ -83,7 +83,7 @@ export default function LandingPage() {
 
             {/* Subheadline */}
             <p 
-              className={`text-base sm:text-lg lg:text-xl text-slate-400 max-w-2xl mx-auto mb-8 sm:mb-10 px-2 transition-all duration-700 delay-200 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+              className={`text-sm sm:text-lg lg:text-xl text-slate-400 max-w-2xl mx-auto mb-6 sm:mb-10 px-4 sm:px-2 transition-all duration-700 delay-200 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
             >
               Automate regulatory compliance with cutting-edge AI. 
               From healthcare advertising to financial services, we keep you compliant.
@@ -91,16 +91,17 @@ export default function LandingPage() {
 
             {/* CTA Buttons */}
             <div 
-              className={`flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 transition-all duration-700 delay-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+              className={`flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0 transition-all duration-700 delay-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
             >
               <Link 
                 href="/agartha"
-                className="group w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-violet-600 hover:bg-violet-500 rounded-xl sm:rounded-2xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg shadow-violet-500/25"
+                className="group w-full sm:w-auto px-5 sm:px-8 py-3 sm:py-4 bg-violet-600 hover:bg-violet-500 rounded-xl sm:rounded-2xl text-white font-semibold text-sm sm:text-base flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg shadow-violet-500/25"
               >
-                Try Healthcare Compliance
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <span className="hidden sm:inline">Try Healthcare Compliance</span>
+                <span className="sm:hidden">Try Compliance Tool</span>
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <button className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl sm:rounded-2xl text-white font-semibold transition-all hover:scale-105">
+              <button className="w-full sm:w-auto px-5 sm:px-8 py-3 sm:py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl sm:rounded-2xl text-white font-semibold text-sm sm:text-base transition-all hover:scale-105">
                 Watch Demo
               </button>
             </div>

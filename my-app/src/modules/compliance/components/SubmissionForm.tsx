@@ -359,7 +359,7 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
             AI Provider
           </span>
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {(Object.entries(LLM_PROVIDERS) as [LLMProvider, typeof LLM_PROVIDERS[LLMProvider]][]).map(([key, config]) => (
             <button
               key={key}
@@ -368,15 +368,15 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
                 setProvider(key);
                 setApiKey(""); // Clear API key when switching providers
               }}
-              className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
+              className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border transition-all ${
                 provider === key
                   ? "border-violet-500 bg-violet-500/10 text-white"
                   : "border-slate-700 bg-slate-800/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50"
               }`}
             >
-              <span className="text-2xl">{config.icon}</span>
-              <div className="text-left">
-                <div className={`font-medium ${provider === key ? "text-white" : "text-slate-300"}`}>
+              <span className="text-xl sm:text-2xl">{config.icon}</span>
+              <div className="text-left min-w-0">
+                <div className={`font-medium text-sm sm:text-base truncate ${provider === key ? "text-white" : "text-slate-300"}`}>
                   {config.name}
                 </div>
               </div>
@@ -508,13 +508,14 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
       {/* Image Upload Section */}
       <div className="form-group">
         <label className="form-label">
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 flex-wrap">
             <ImageIcon className="w-4 h-4" />
-            Ad Creative / Image {imageOnly ? <span className="text-violet-400">(Required)</span> : "(Optional)"}
+            <span>Ad Creative / Image</span>
+            {imageOnly ? <span className="text-violet-400 text-xs">(Required)</span> : <span className="text-slate-500 text-xs">(Optional)</span>}
           </span>
         </label>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {/* File Upload / Paste / Drop Zone */}
           <div
             ref={dropZoneRef}
@@ -539,19 +540,19 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
             />
             {isDragging ? (
               <>
-                <Upload className="w-8 h-8 text-violet-400 mx-auto mb-2 animate-bounce" />
-                <p className="text-sm text-violet-400 font-medium">
+                <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-violet-400 mx-auto mb-2 animate-bounce" />
+                <p className="text-xs sm:text-sm text-violet-400 font-medium">
                   Drop image here
                 </p>
               </>
             ) : (
               <>
-                <Upload className={`w-8 h-8 mx-auto mb-2 ${imageUrl ? "text-slate-600" : "text-slate-500"}`} />
-                <p className={`text-sm ${imageUrl ? "text-slate-600" : "text-slate-400"}`}>
-                  {imageUrl ? "Clear URL to upload file" : "Click, drag & drop, or paste"}
+                <Upload className={`w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1.5 sm:mb-2 ${imageUrl ? "text-slate-600" : "text-slate-500"}`} />
+                <p className={`text-xs sm:text-sm ${imageUrl ? "text-slate-600" : "text-slate-400"}`}>
+                  {imageUrl ? "Clear URL to upload" : "Tap, drop, or paste"}
                 </p>
                 {!imageUrl && (
-                  <div className="flex items-center justify-center gap-2 mt-2">
+                  <div className="hidden sm:flex items-center justify-center gap-2 mt-2">
                     <span className="px-2 py-0.5 bg-slate-700/50 rounded text-xs text-slate-400 flex items-center gap-1">
                       <Clipboard className="w-3 h-3" />
                       Ctrl+V
@@ -559,7 +560,7 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
                     <span className="text-xs text-slate-500">to paste</span>
                   </div>
                 )}
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5 sm:mt-2">
                   PNG, JPG, GIF up to 10MB
                 </p>
               </>

@@ -14,12 +14,21 @@ import {
   XCircle,
   AlertTriangle,
   Zap,
-  ArrowRight
+  ArrowRight,
+  History,
+  Trash2,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Clock,
+  Target,
+  BarChart3
 } from "lucide-react";
 import { SubmissionForm, ComplianceReport } from "@/modules/compliance/components";
+import { useHistory } from "@/modules/compliance/hooks";
 import type { ComplianceReport as ComplianceReportType, SubmissionData, LLMProvider } from "@/modules/compliance/types";
 
-type Tab = "analyze" | "results";
+type Tab = "analyze" | "results" | "history";
 
 export default function AgarthaCompliance() {
   const [activeTab, setActiveTab] = useState<Tab>("analyze");
@@ -28,6 +37,9 @@ export default function AgarthaCompliance() {
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [tabAnimating, setTabAnimating] = useState(false);
+  
+  // History management
+  const { history, stats, addReport, deleteItem, clearAll } = useHistory();
 
   useEffect(() => {
     setMounted(true);
@@ -81,6 +93,7 @@ export default function AgarthaCompliance() {
 
       const reportData = await response.json();
       setReport(reportData);
+      addReport(reportData); // Save to history
       handleTabChange("results", true); // Force switch to results tab
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -159,15 +172,15 @@ export default function AgarthaCompliance() {
               </div>
             </div>
 
-            {/* Status Badge */}
-            <div className={`transition-all duration-500 ${isLoading ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
-              <div className="flex items-center gap-2 px-4 py-2 bg-violet-500/20 border border-violet-500/30 rounded-full animate-pulse-glow">
-                <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                <span className="text-sm text-violet-300 font-medium">Analyzing</span>
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            {/* Status Badge - Hidden on very small screens when loading */}
+            <div className={`transition-all duration-500 ${isLoading ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"}`}>
+              <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-violet-500/20 border border-violet-500/30 rounded-full animate-pulse-glow">
+                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-400 animate-spin" />
+                <span className="text-xs sm:text-sm text-violet-300 font-medium hidden xs:inline">Analyzing</span>
+                <div className="flex gap-0.5 sm:gap-1">
+                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             </div>
@@ -178,20 +191,20 @@ export default function AgarthaCompliance() {
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {/* Header Section */}
         <header 
-          className={`text-center mb-6 sm:mb-8 transition-all duration-700 ${
+          className={`text-center mb-5 sm:mb-8 transition-all duration-700 ${
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
           <div 
-            className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-violet-600 rounded-2xl sm:rounded-3xl mb-5 shadow-2xl shadow-violet-500/30 animate-float"
+            className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 bg-violet-600 rounded-xl sm:rounded-3xl mb-4 sm:mb-5 shadow-2xl shadow-violet-500/30 animate-float"
           >
-            <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+            <Shield className="w-7 h-7 sm:w-10 sm:h-10 text-white" />
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 text-white">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold mb-2 sm:mb-3 text-white px-2">
             Healthcare Ad Compliance
           </h1>
           <p 
-            className={`text-sm sm:text-base text-slate-400 max-w-xl mx-auto transition-all duration-700 delay-200 ${
+            className={`text-xs sm:text-base text-slate-400 max-w-xl mx-auto px-4 transition-all duration-700 delay-200 ${
               mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             }`}
           >
@@ -199,7 +212,7 @@ export default function AgarthaCompliance() {
           </p>
         </header>
 
-        {/* Full Width Tab Navigation */}
+        {/* Tab Navigation - 3 tabs */}
         <div 
           className={`mb-6 sm:mb-8 transition-all duration-700 delay-100 ${
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
@@ -210,25 +223,30 @@ export default function AgarthaCompliance() {
             <div 
               className="absolute top-1.5 bottom-1.5 rounded-xl bg-violet-600 shadow-lg shadow-violet-500/30 transition-all duration-500 ease-out"
               style={{
-                left: activeTab === "analyze" ? "6px" : "calc(50% + 3px)",
-                width: "calc(50% - 9px)",
+                left: activeTab === "analyze" 
+                  ? "6px" 
+                  : activeTab === "results" 
+                    ? "calc(33.333% + 3px)" 
+                    : "calc(66.666% + 3px)",
+                width: "calc(33.333% - 8px)",
               }}
             />
             
-            <div className="relative grid grid-cols-2 gap-1">
+            <div className="relative grid grid-cols-3 gap-1">
               {/* Analyze Tab */}
               <button
                 onClick={() => handleTabChange("analyze")}
-                className={`relative flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-4 sm:py-5 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 ${
+                className={`relative flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-3 sm:py-4 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
                   activeTab === "analyze"
                     ? "text-white"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <ScanSearch className={`w-5 h-5 transition-transform duration-300 ${activeTab === "analyze" ? "scale-110" : ""}`} />
-                <span>Analyze</span>
+                <ScanSearch className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 ${activeTab === "analyze" ? "scale-110" : ""}`} />
+                <span className="hidden sm:inline">Analyze</span>
+                <span className="sm:hidden">New</span>
                 {isLoading && activeTab === "analyze" && (
-                  <Sparkles className="w-4 h-4 animate-spin-slow" />
+                  <Sparkles className="w-3 h-3 animate-spin-slow" />
                 )}
               </button>
 
@@ -236,7 +254,7 @@ export default function AgarthaCompliance() {
               <button
                 onClick={() => handleTabChange("results")}
                 disabled={!report}
-                className={`relative flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-4 sm:py-5 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 ${
+                className={`relative flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-3 sm:py-4 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
                   activeTab === "results"
                     ? "text-white"
                     : report 
@@ -244,33 +262,48 @@ export default function AgarthaCompliance() {
                       : "text-slate-600 cursor-not-allowed"
                 }`}
               >
-                <FileBarChart className={`w-5 h-5 transition-transform duration-300 ${activeTab === "results" ? "scale-110" : ""}`} />
+                <FileBarChart className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 ${activeTab === "results" ? "scale-110" : ""}`} />
                 <span>Results</span>
                 {report && (() => {
                   const totalIssues = report.textViolations.length + 
                     report.imageViolations.length + 
                     (report.imageTextViolations?.length || 0);
                   return (
-                    <span className={`ml-1 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-300 ${
+                    <span className={`ml-0.5 flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 ${
                       activeTab === "results" 
                         ? "bg-white/20 text-white" 
                         : totalIssues === 0
-                          ? "bg-green-500/20 text-green-400 animate-pulse-subtle"
+                          ? "bg-green-500/20 text-green-400"
                           : totalIssues >= 3
-                            ? "bg-red-500/20 text-red-400 animate-pulse-subtle"
-                            : "bg-amber-500/20 text-amber-400 animate-pulse-subtle"
+                            ? "bg-red-500/20 text-red-400"
+                            : "bg-amber-500/20 text-amber-400"
                     }`}>
-                      {totalIssues === 0 ? (
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                      ) : totalIssues >= 3 ? (
-                        <XCircle className="w-3.5 h-3.5" />
-                      ) : (
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                      )}
-                      {totalIssues} 
+                      {totalIssues}
                     </span>
                   );
                 })()}
+              </button>
+
+              {/* History Tab */}
+              <button
+                onClick={() => handleTabChange("history")}
+                className={`relative flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-3 sm:py-4 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
+                  activeTab === "history"
+                    ? "text-white"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <History className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 ${activeTab === "history" ? "scale-110" : ""}`} />
+                <span>History</span>
+                {history.length > 0 && (
+                  <span className={`ml-0.5 flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 ${
+                    activeTab === "history" 
+                      ? "bg-white/20 text-white" 
+                      : "bg-slate-500/20 text-slate-400"
+                  }`}>
+                    {history.length}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -285,29 +318,30 @@ export default function AgarthaCompliance() {
           <div className="relative bg-white/5 backdrop-blur-md border border-white/20 rounded-[10px] overflow-hidden shadow-lg shadow-black/20">
             
             {/* Content */}
-            <div className="relative p-5 sm:p-8">
+            <div className="relative p-4 sm:p-8">
               {/* Tab Content with Animation */}
               <div className={`transition-all duration-300 ${tabAnimating ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"}`}>
                 {/* Analyze Tab Content */}
                 {activeTab === "analyze" && (
                   <div className="animate-fade-in-up">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-700/50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-violet-500/20 rounded-xl flex items-center justify-center border border-violet-500/20 animate-pulse-subtle">
-                          <ScanSearch className="w-6 h-6 text-violet-400" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-700/50">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-violet-500/20 rounded-lg sm:rounded-xl flex items-center justify-center border border-violet-500/20 animate-pulse-subtle">
+                          <ScanSearch className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />
                         </div>
                         <div>
-                          <h2 className="text-xl font-bold text-white">Submit Content</h2>
-                          <p className="text-sm text-slate-400">Upload your ad for compliance review</p>
+                          <h2 className="text-lg sm:text-xl font-bold text-white">Submit Content</h2>
+                          <p className="text-xs sm:text-sm text-slate-400">Upload your ad for compliance review</p>
                         </div>
                       </div>
                       {report && (
                         <button
                           onClick={() => handleTabChange("results")}
-                          className="group flex items-center gap-2 px-5 py-2.5 bg-slate-700/50 hover:bg-slate-700 rounded-xl text-sm text-slate-300 hover:text-white transition-all duration-300 border border-slate-600/50 hover:border-slate-500"
+                          className="group flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg sm:rounded-xl text-xs sm:text-sm text-slate-300 hover:text-white transition-all duration-300 border border-slate-600/50 hover:border-slate-500 w-fit"
                         >
                           <FileBarChart className="w-4 h-4" />
-                          View Last Results
+                          <span className="hidden sm:inline">View Last Results</span>
+                          <span className="sm:hidden">View Results</span>
                           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
                         </button>
                       )}
@@ -319,9 +353,9 @@ export default function AgarthaCompliance() {
                 {/* Results Tab Content */}
                 {activeTab === "results" && report && (
                   <div className="animate-fade-in-up">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-700/50">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all duration-500 ${
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-700/50">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center border transition-all duration-500 ${
                           report.status === "pass" 
                             ? "bg-green-500/20 border-green-500/20" 
                             : report.status === "fail" 
@@ -329,23 +363,23 @@ export default function AgarthaCompliance() {
                               : "bg-amber-500/20 border-amber-500/20"
                         } ${report.status === "pass" ? "animate-success-pop" : report.status === "fail" ? "animate-error-shake" : "animate-pulse-subtle"}`}>
                           {report.status === "pass" ? (
-                            <CheckCircle2 className="w-6 h-6 text-green-400" />
+                            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
                           ) : report.status === "fail" ? (
-                            <XCircle className="w-6 h-6 text-red-400" />
+                            <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
                           ) : (
-                            <AlertTriangle className="w-6 h-6 text-amber-400" />
+                            <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
                           )}
                         </div>
                         <div>
-                          <h2 className="text-xl font-bold text-white">Compliance Report</h2>
-                          <p className="text-sm text-slate-400">
+                          <h2 className="text-lg sm:text-xl font-bold text-white">Compliance Report</h2>
+                          <p className="text-xs sm:text-sm text-slate-400">
                             {new Date(report.timestamp).toLocaleString()}
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={handleNewAnalysis}
-                        className="group flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-xl text-sm text-white font-semibold transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
+                        className="group flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-violet-600 hover:bg-violet-500 rounded-lg sm:rounded-xl text-xs sm:text-sm text-white font-semibold transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 w-fit"
                       >
                         <Zap className="w-4 h-4" />
                         New Analysis
@@ -358,22 +392,211 @@ export default function AgarthaCompliance() {
 
                 {/* Empty Results State */}
                 {activeTab === "results" && !report && (
-                  <div className="text-center py-20 animate-fade-in-up">
-                    <div className="w-20 h-20 mx-auto bg-slate-700/50 rounded-3xl flex items-center justify-center mb-6 animate-float">
-                      <FileBarChart className="w-10 h-10 text-slate-500" />
+                  <div className="text-center py-12 sm:py-20 animate-fade-in-up">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto bg-slate-700/50 rounded-2xl sm:rounded-3xl flex items-center justify-center mb-4 sm:mb-6 animate-float">
+                      <FileBarChart className="w-8 h-8 sm:w-10 sm:h-10 text-slate-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-300 mb-2">No Results Yet</h3>
-                    <p className="text-sm text-slate-500 mb-8 max-w-sm mx-auto">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-300 mb-2">No Results Yet</h3>
+                    <p className="text-xs sm:text-sm text-slate-500 mb-6 sm:mb-8 max-w-sm mx-auto px-4">
                       Submit your ad content to see detailed compliance results
                     </p>
                     <button
                       onClick={() => handleTabChange("analyze")}
-                      className="group inline-flex items-center gap-2 px-8 py-3 bg-violet-600 hover:bg-violet-500 rounded-xl text-white font-semibold transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
+                      className="group inline-flex items-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-violet-600 hover:bg-violet-500 rounded-xl text-white font-semibold text-sm sm:text-base transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
                     >
                       <ScanSearch className="w-5 h-5" />
                       Start Analysis
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                     </button>
+                  </div>
+                )}
+
+                {/* History Tab Content */}
+                {activeTab === "history" && (
+                  <div className="animate-fade-in-up">
+                    {/* History Header with Stats */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-700/50">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-500/20 rounded-lg sm:rounded-xl flex items-center justify-center border border-slate-500/20">
+                          <History className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg sm:text-xl font-bold text-white">Analysis History</h2>
+                          <p className="text-xs sm:text-sm text-slate-400">{stats.totalChecks} checks performed</p>
+                        </div>
+                      </div>
+                      {history.length > 0 && (
+                        <button
+                          onClick={() => {
+                            if (confirm("Clear all history? This cannot be undone.")) {
+                              clearAll();
+                            }
+                          }}
+                          className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg sm:rounded-xl text-xs sm:text-sm text-red-400 hover:text-red-300 transition-all duration-300 w-fit"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          <span className="hidden sm:inline">Clear History</span>
+                          <span className="sm:hidden">Clear</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Stats Cards */}
+                    {history.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+                        <div className="bg-slate-800/50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-slate-700/50">
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">
+                            <BarChart3 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <span className="truncate">Total</span>
+                          </div>
+                          <div className="text-xl sm:text-2xl font-bold text-white">{stats.totalChecks}</div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-slate-700/50">
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">
+                            <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <span className="truncate">Pass Rate</span>
+                          </div>
+                          <div className="text-xl sm:text-2xl font-bold text-green-400">{stats.passRate}%</div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-slate-700/50">
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">
+                            <Target className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <span className="truncate">Avg Score</span>
+                          </div>
+                          <div className="text-xl sm:text-2xl font-bold text-violet-400">{stats.avgScore}</div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-slate-700/50">
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">
+                            {stats.recentTrend === "improving" ? (
+                              <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400" />
+                            ) : stats.recentTrend === "declining" ? (
+                              <TrendingDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-400" />
+                            ) : (
+                              <Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            )}
+                            <span className="truncate">Trend</span>
+                          </div>
+                          <div className={`text-base sm:text-lg font-bold capitalize ${
+                            stats.recentTrend === "improving" ? "text-green-400" :
+                            stats.recentTrend === "declining" ? "text-red-400" :
+                            "text-slate-400"
+                          }`}>
+                            {stats.recentTrend}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* History List */}
+                    {history.length > 0 ? (
+                      <div className="space-y-2 sm:space-y-3 max-h-[400px] sm:max-h-[500px] overflow-y-auto pr-1 sm:pr-2">
+                        {history.map((item) => (
+                          <div
+                            key={item.id}
+                            className="group bg-slate-800/30 hover:bg-slate-800/50 rounded-xl p-3 sm:p-4 border border-slate-700/50 hover:border-slate-600/50 transition-all duration-300 cursor-pointer"
+                            onClick={() => {
+                              setReport(item.fullReport);
+                              handleTabChange("results", true);
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-2 sm:gap-4">
+                              <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                                {/* Score Badge */}
+                                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex flex-col items-center justify-center shrink-0 ${
+                                  item.status === "pass" 
+                                    ? "bg-green-500/20 border border-green-500/30" 
+                                    : item.status === "fail"
+                                      ? "bg-red-500/20 border border-red-500/30"
+                                      : "bg-amber-500/20 border border-amber-500/30"
+                                }`}>
+                                  <span className={`text-base sm:text-lg font-bold ${
+                                    item.status === "pass" ? "text-green-400" :
+                                    item.status === "fail" ? "text-red-400" :
+                                    "text-amber-400"
+                                  }`}>
+                                    {item.overallScore}
+                                  </span>
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-1">
+                                    <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${
+                                      item.status === "pass" 
+                                        ? "bg-green-500/20 text-green-400" 
+                                        : item.status === "fail"
+                                          ? "bg-red-500/20 text-red-400"
+                                          : "bg-amber-500/20 text-amber-400"
+                                    }`}>
+                                      {item.status.toUpperCase()}
+                                    </span>
+                                    <span className="text-[10px] sm:text-xs text-slate-500 hidden sm:inline">{item.platform}</span>
+                                    <span className="text-[10px] sm:text-xs text-slate-500 truncate max-w-[80px] sm:max-w-none">{item.productCategory}</span>
+                                  </div>
+                                  
+                                  <p className="text-xs sm:text-sm text-slate-300 truncate mb-1.5 sm:mb-2">{item.summary}</p>
+                                  
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-[10px] sm:text-xs">
+                                    <span className="flex items-center gap-1 text-slate-500">
+                                      <Clock className="w-3 h-3" />
+                                      {new Date(item.timestamp).toLocaleDateString()}
+                                    </span>
+                                    {item.totalViolations > 0 && (
+                                      <span className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                                        {item.criticalCount > 0 && (
+                                          <span className="text-red-400">{item.criticalCount}c</span>
+                                        )}
+                                        {item.warningCount > 0 && (
+                                          <span className="text-amber-400">{item.warningCount}w</span>
+                                        )}
+                                        {item.infoCount > 0 && (
+                                          <span className="text-blue-400">{item.infoCount}i</span>
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Actions - Always visible on mobile, hover on desktop */}
+                              <div className="flex items-center gap-1 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm("Delete this history item?")) {
+                                      deleteItem(item.id);
+                                    }
+                                  }}
+                                  className="p-1.5 sm:p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                </button>
+                                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-1 transition-all" />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 sm:py-16">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto bg-slate-700/50 rounded-2xl sm:rounded-3xl flex items-center justify-center mb-4 sm:mb-6">
+                          <History className="w-8 h-8 sm:w-10 sm:h-10 text-slate-500" />
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-300 mb-2">No History Yet</h3>
+                        <p className="text-xs sm:text-sm text-slate-500 mb-6 sm:mb-8 max-w-sm mx-auto px-4">
+                          Your compliance check history will appear here after your first analysis
+                        </p>
+                        <button
+                          onClick={() => handleTabChange("analyze")}
+                          className="group inline-flex items-center gap-2 px-5 sm:px-8 py-2.5 sm:py-3 bg-violet-600 hover:bg-violet-500 rounded-xl text-white font-semibold text-sm sm:text-base transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
+                        >
+                          <ScanSearch className="w-5 h-5" />
+                          <span className="hidden sm:inline">Start Your First Analysis</span>
+                          <span className="sm:hidden">Start Analysis</span>
+                          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -383,15 +606,15 @@ export default function AgarthaCompliance() {
 
         {/* Footer */}
         <footer 
-          className={`mt-10 sm:mt-12 text-center transition-all duration-700 delay-300 ${
+          className={`mt-8 sm:mt-12 text-center px-4 transition-all duration-700 delay-300 ${
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
           }`}
         >
-          <p className="text-xs sm:text-sm text-slate-500">
-            Powered by <span className="text-violet-400">Gemini</span> & <span className="text-fuchsia-400">GPT-4o</span> • SightEngine Moderation
+          <p className="text-[10px] sm:text-sm text-slate-500">
+            Powered by <span className="text-violet-400">Gemini</span> & <span className="text-fuchsia-400">GPT-4o</span> • SightEngine
           </p>
-          <p className="mt-1.5 text-xs text-slate-600">
-            This tool provides guidance only. Consult compliance teams for final approval.
+          <p className="mt-1 sm:mt-1.5 text-[10px] sm:text-xs text-slate-600">
+            Guidance only. Consult compliance teams for final approval.
           </p>
         </footer>
       </div>

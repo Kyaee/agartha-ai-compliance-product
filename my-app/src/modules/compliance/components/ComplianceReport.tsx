@@ -68,8 +68,8 @@ function ScoreGauge({ score, status }: { score: number; status: "pass" | "fail" 
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="relative w-40 h-40">
-      <svg className="w-40 h-40 transform -rotate-90">
+    <div className="relative w-28 h-28 sm:w-40 sm:h-40">
+      <svg className="w-28 h-28 sm:w-40 sm:h-40 transform -rotate-90" viewBox="0 0 160 160">
         {/* Background circle */}
         <circle
           cx="80"
@@ -95,10 +95,10 @@ function ScoreGauge({ score, status }: { score: number; status: "pass" | "fail" 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-bold" style={{ color: stroke }}>
+        <span className="text-2xl sm:text-4xl font-bold" style={{ color: stroke }}>
           {score}
         </span>
-        <span className="text-xs text-slate-400 uppercase tracking-wider">Score</span>
+        <span className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider">Score</span>
       </div>
     </div>
   );
@@ -132,9 +132,9 @@ function StatusBadge({ status }: { status: "pass" | "fail" | "review" }) {
   const { icon: Icon, label, color, bgColor, borderColor } = config[status];
 
   return (
-    <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${bgColor} ${borderColor} border ${color}`}>
-      <Icon className="w-5 h-5" />
-      <span className="font-bold tracking-wider text-sm">{label}</span>
+    <div className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full ${bgColor} ${borderColor} border ${color}`}>
+      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+      <span className="font-bold tracking-wider text-xs sm:text-sm">{label}</span>
     </div>
   );
 }
@@ -233,41 +233,41 @@ function ImageViolationCard({ violation }: { violation: ImageViolation }) {
   return (
     <div className={`rounded-xl border ${config.borderColor} ${config.bgColor} overflow-hidden`}>
       {/* Header */}
-      <div className="flex items-start gap-4 p-4">
-        <div className={`shrink-0 flex items-center justify-center w-10 h-10 rounded-xl ${config.bgColor} ${config.color} border ${config.borderColor}`}>
-          <Icon className="w-5 h-5" />
+      <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4">
+        <div className={`shrink-0 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl ${config.bgColor} ${config.color} border ${config.borderColor}`}>
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className={`text-xs font-bold uppercase tracking-wider ${config.color}`}>
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
+            <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${config.color}`}>
               {violation.severity}
             </span>
-            <span className="text-slate-500">•</span>
-            <span className="text-sm font-medium text-slate-200">
+            <span className="text-slate-500 hidden sm:inline">•</span>
+            <span className="text-xs sm:text-sm font-medium text-slate-200">
               {issueTypeLabels[violation.imageIssueType] || violation.imageIssueType}
             </span>
           </div>
           
           {/* Policy Reference */}
-          <p className="text-xs text-slate-500 mb-2">
+          <p className="text-[10px] sm:text-xs text-slate-500 mb-1.5 sm:mb-2">
             {violation.policyReference}
           </p>
           
           {/* Issue Description */}
-          <p className="text-sm text-slate-300 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
             {violation.policyDescription || issueTypeDescriptions[violation.imageIssueType]}
           </p>
         </div>
       </div>
 
       {/* Suggested Fix */}
-      <div className="px-4 pb-4">
-        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-          <div className="text-xs text-green-400 mb-2 flex items-center gap-1.5 font-medium">
-            <Lightbulb className="w-4 h-4" />
+      <div className="px-3 sm:px-4 pb-3 sm:pb-4">
+        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 sm:p-4">
+          <div className="text-[10px] sm:text-xs text-green-400 mb-1.5 sm:mb-2 flex items-center gap-1.5 font-medium">
+            <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             Suggested Fix
           </div>
-          <p className="text-sm text-green-300 leading-relaxed">{violation.suggestedFix}</p>
+          <p className="text-xs sm:text-sm text-green-300 leading-relaxed">{violation.suggestedFix}</p>
         </div>
       </div>
 
@@ -347,17 +347,17 @@ function ModerationScoreBar({
   const barWidth = isSafeMetric ? displayScore : displayScore;
   
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center gap-2 text-slate-300">
-          <Icon className="w-4 h-4" />
-          <span>{label}</span>
+    <div className="space-y-0.5 sm:space-y-1">
+      <div className="flex items-center justify-between text-xs sm:text-sm">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-slate-300">
+          <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="truncate">{label}</span>
         </div>
-        <span className={`font-mono font-medium ${text}`}>
+        <span className={`font-mono font-medium ${text} ml-2`}>
           {displayScore}%
         </span>
       </div>
-      <div className={`h-2 bg-slate-800 rounded-full overflow-hidden border ${border}`}>
+      <div className={`h-1.5 sm:h-2 bg-slate-800 rounded-full overflow-hidden border ${border}`}>
         {barWidth > 0 && (
           <div 
             className={`h-full ${bar} transition-all duration-500 rounded-full`}
@@ -465,15 +465,15 @@ function ImageModerationScores({
 
       {/* Text Content Issues Alert - Show when profanity or harmful text detected */}
       {hasTextIssues && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
-              <AlertOctagon className="w-5 h-5 text-red-400" />
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 sm:p-4">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
+              <AlertOctagon className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h5 className="font-semibold text-red-400 mb-2">Text Content Issues Detected</h5>
-              <p className="text-sm text-slate-300 mb-3">
-                Problematic text was found in your image via OCR scanning:
+              <h5 className="font-semibold text-red-400 text-sm sm:text-base mb-1 sm:mb-2">Text Issues Detected</h5>
+              <p className="text-xs sm:text-sm text-slate-300 mb-2 sm:mb-3">
+                Problematic text found via OCR:
               </p>
               <div className="flex flex-wrap gap-2">
                 {hasTextProfanity && (
@@ -516,14 +516,14 @@ function ImageModerationScores({
       )}
 
       {/* Moderation Categories */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Left Column */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Visual Content Analysis</h5>
-            <span className="text-xs text-slate-500">Imagery detection</span>
+            <h5 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider">Visual Analysis</h5>
+            <span className="text-[10px] sm:text-xs text-slate-500">Imagery</span>
           </div>
-          <div className="space-y-3 bg-slate-800/30 rounded-lg p-4 border border-slate-700/50">
+          <div className="space-y-2 sm:space-y-3 bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/50">
             <ModerationScoreBar 
               label="Nudity/Sexual" 
               score={maxNudity} 
@@ -543,12 +543,12 @@ function ImageModerationScores({
         </div>
 
         {/* Right Column */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Safety Checks</h5>
-            <span className="text-xs text-slate-500">Content & text</span>
+            <h5 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider">Safety Checks</h5>
+            <span className="text-[10px] sm:text-xs text-slate-500">Content</span>
           </div>
-          <div className="space-y-3 bg-slate-800/30 rounded-lg p-4 border border-slate-700/50">
+          <div className="space-y-2 sm:space-y-3 bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/50">
             <ModerationScoreBar 
               label="Recreational Drugs" 
               score={scores.recreational_drug} 
@@ -590,22 +590,22 @@ function ImageModerationScores({
 
       {/* Detailed Nudity Breakdown (if any nudity detected) */}
       {maxNudity > 0.1 && (
-        <div className="space-y-3">
-          <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Nudity Breakdown</h5>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <div className="space-y-2 sm:space-y-3">
+          <h5 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider">Nudity Breakdown</h5>
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
             {[
               { label: "Sexual Activity", value: scores.nudity.sexual_activity },
               { label: "Sexual Display", value: scores.nudity.sexual_display },
               { label: "Erotica", value: scores.nudity.erotica },
-              { label: "Very Suggestive", value: scores.nudity.very_suggestive },
+              { label: "V. Suggestive", value: scores.nudity.very_suggestive },
               { label: "Suggestive", value: scores.nudity.suggestive },
             ].map((item) => {
               const percent = Math.round(item.value * 100);
               const color = percent < 20 ? "text-green-400" : percent < 50 ? "text-amber-400" : "text-red-400";
               return (
-                <div key={item.label} className="bg-slate-800/50 rounded-lg p-3 text-center">
-                  <div className={`text-lg font-bold ${color}`}>{percent}%</div>
-                  <div className="text-xs text-slate-500 mt-1">{item.label}</div>
+                <div key={item.label} className="bg-slate-800/50 rounded-lg p-2 sm:p-3 text-center">
+                  <div className={`text-sm sm:text-lg font-bold ${color}`}>{percent}%</div>
+                  <div className="text-[9px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 truncate">{item.label}</div>
                 </div>
               );
             })}
