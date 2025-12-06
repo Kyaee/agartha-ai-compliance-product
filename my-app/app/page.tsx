@@ -58,7 +58,7 @@ export default function LandingPage() {
       <nav className="relative z-10 px-4 sm:px-6 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/25">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/25">
               <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <span className="text-lg sm:text-xl font-bold text-white tracking-tight">Agartha AI</span>
@@ -72,7 +72,7 @@ export default function LandingPage() {
             </Link>
             <Link 
               href="/agartha" 
-              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/10 rounded-full text-xs sm:text-sm font-medium text-white transition-all hover:scale-105"
+              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 rounded-[10px] text-xs sm:text-sm font-medium text-white transition-all hover:scale-105 shadow-lg shadow-black/10"
             >
               Get Started
             </Link>
@@ -97,7 +97,7 @@ export default function LandingPage() {
               className={`text-3xl sm:text-5xl lg:text-7xl font-bold leading-[1.15] sm:leading-[1.1] mb-4 sm:mb-6 transition-all duration-700 delay-100 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
             >
               <span className="text-white">AI-Powered </span>
-              <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="text-violet-400">
                 Compliance
               </span>
               <br />
@@ -118,7 +118,7 @@ export default function LandingPage() {
             >
               <Link 
                 href="/agartha"
-                className="group w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl sm:rounded-2xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg shadow-violet-500/25"
+                className="group w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-violet-600 hover:bg-violet-500 rounded-xl sm:rounded-2xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg shadow-violet-500/25"
               >
                 Try Healthcare Compliance
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -138,12 +138,12 @@ export default function LandingPage() {
             {/* Healthcare Compliance Card - Primary */}
             <Link 
               href="/agartha"
-              className={`group relative bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 rounded-2xl sm:rounded-3xl p-5 sm:p-8 hover:border-violet-500/40 transition-all duration-500 hover:scale-[1.02] cursor-pointer ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+              className={`group relative bg-white/10 backdrop-blur-md border border-white/20 rounded-[10px] p-5 sm:p-8 hover:border-violet-500/40 hover:bg-white/15 transition-all duration-500 hover:scale-[1.02] cursor-pointer shadow-lg shadow-black/10 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               style={{ transitionDelay: "400ms" }}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent rounded-2xl sm:rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-violet-500/5 rounded-[10px] opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-violet-500/20">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-violet-600 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-violet-500/20">
                   <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                 </div>
                 <div className="flex items-center gap-2 mb-2 sm:mb-3">
@@ -162,7 +162,7 @@ export default function LandingPage() {
 
             {/* Financial Compliance Card */}
             <div 
-              className={`relative bg-slate-800/30 border border-slate-700/50 rounded-2xl sm:rounded-3xl p-5 sm:p-8 transition-all duration-500 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+              className={`relative bg-white/5 backdrop-blur-md border border-white/20 rounded-[10px] p-5 sm:p-8 transition-all duration-500 shadow-lg shadow-black/10 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               style={{ transitionDelay: "500ms" }}
             >
               <div className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-700/50 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
@@ -179,7 +179,7 @@ export default function LandingPage() {
 
             {/* Data Privacy Card */}
             <div 
-              className={`relative bg-slate-800/30 border border-slate-700/50 rounded-2xl sm:rounded-3xl p-5 sm:p-8 transition-all duration-500 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+              className={`relative bg-white/5 backdrop-blur-md border border-white/20 rounded-[10px] p-5 sm:p-8 transition-all duration-500 shadow-lg shadow-black/10 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               style={{ transitionDelay: "600ms" }}
             >
               <div className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-700/50 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
@@ -201,24 +201,24 @@ export default function LandingPage() {
       <section className="relative z-10 px-4 sm:px-6 py-12 sm:py-20">
         <div className="max-w-7xl mx-auto">
           <div 
-            className={`bg-gradient-to-r from-slate-800/50 to-slate-800/30 border border-slate-700/50 rounded-2xl sm:rounded-3xl p-6 sm:p-12 transition-all duration-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+            className={`bg-white/5 backdrop-blur-md border border-white/20 rounded-[10px] p-6 sm:p-12 transition-all duration-700 shadow-lg shadow-black/10 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
             style={{ transitionDelay: "700ms" }}
           >
             <div className="grid grid-cols-3 gap-4 sm:gap-8 text-center">
               <div>
-                <div className="text-2xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent mb-1 sm:mb-2">
+                <div className="text-2xl sm:text-4xl lg:text-5xl font-bold text-violet-400 mb-1 sm:mb-2">
                   25+
                 </div>
                 <p className="text-xs sm:text-base text-slate-400">Policy Rules</p>
               </div>
               <div>
-                <div className="text-2xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent mb-1 sm:mb-2">
+                <div className="text-2xl sm:text-4xl lg:text-5xl font-bold text-violet-400 mb-1 sm:mb-2">
                   3
                 </div>
                 <p className="text-xs sm:text-base text-slate-400">Platforms</p>
               </div>
               <div>
-                <div className="text-2xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent mb-1 sm:mb-2">
+                <div className="text-2xl sm:text-4xl lg:text-5xl font-bold text-violet-400 mb-1 sm:mb-2">
                   &lt;10s
                 </div>
                 <p className="text-xs sm:text-base text-slate-400">Analysis</p>
@@ -257,7 +257,7 @@ export default function LandingPage() {
                 className={`text-center transition-all duration-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
                 style={{ transitionDelay: `${900 + i * 100}ms` }}
               >
-                <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto bg-slate-800/50 border border-slate-700/50 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-[10px] flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-black/10">
                   <step.icon className="w-6 h-6 sm:w-8 sm:h-8 text-violet-400" />
                 </div>
                 <div className="text-xs sm:text-sm text-violet-400 font-medium mb-1 sm:mb-2">Step {i + 1}</div>
@@ -273,7 +273,7 @@ export default function LandingPage() {
       <section className="relative z-10 px-4 sm:px-6 py-12 sm:py-20">
         <div className="max-w-4xl mx-auto text-center">
           <div 
-            className={`bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-violet-500/20 rounded-2xl sm:rounded-3xl p-6 sm:p-12 transition-all duration-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+            className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-[10px] p-6 sm:p-12 transition-all duration-700 shadow-lg shadow-black/10 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
             style={{ transitionDelay: "1200ms" }}
           >
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-4">

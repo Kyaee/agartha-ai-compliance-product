@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 
-const instrumentSans = Instrument_Sans({
-  variable: "--font-instrument-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -29,8 +29,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${instrumentSans.variable} ${jetbrainsMono.variable} antialiased`}
-        style={{ fontFamily: "var(--font-instrument-sans), system-ui, sans-serif" }}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
+        style={{ fontFamily: "var(--font-inter), system-ui, sans-serif" }}
       >
         {children}
       </body>
