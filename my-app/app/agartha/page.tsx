@@ -267,7 +267,7 @@ export default function AgarthaCompliance() {
                       ) : (
                         <AlertTriangle className="w-3.5 h-3.5" />
                       )}
-                      {totalIssues} {totalIssues === 1 ? "issue" : "issues"}
+                      {totalIssues} 
                     </span>
                   );
                 })()}

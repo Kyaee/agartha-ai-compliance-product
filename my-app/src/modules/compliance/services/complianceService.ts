@@ -135,17 +135,13 @@ export async function analyzeImageCompliance(
 
 export function calculateComplianceScore(
   textViolations: Violation[],
-  imageViolations: ImageViolation[] = [],
+  imageViolations: Violation[] = [],
   imageTextViolations: Violation[] = []
 ): { score: number; status: "pass" | "fail" | "review" } {
   let score = 100;
 
   // Combine all violations for scoring
-  const allViolations = [
-    ...textViolations,
-    ...imageViolations,
-    ...imageTextViolations,
-  ];
+  const allViolations = [...textViolations, ...imageViolations, ...imageTextViolations];
 
   // Deduct points for ALL violations
   for (const violation of allViolations) {
@@ -157,13 +153,12 @@ export function calculateComplianceScore(
   score = Math.max(0, Math.min(100, Math.round(score)));
 
   // Determine status based on ALL violations
-  const hasCritical = allViolations.some((v) => v.severity === "critical");
-  const hasWarning = allViolations.some((v) => v.severity === "warning");
-
   let status: "pass" | "fail" | "review";
+  const hasCritical = allViolations.some((v) => v.severity === "critical");
+
   if (hasCritical || score < 60) {
     status = "fail";
-  } else if (hasWarning || score < 80) {
+  } else if (score < 80) {
     status = "review";
   } else {
     status = "pass";
