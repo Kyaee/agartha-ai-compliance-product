@@ -151,7 +151,7 @@ function ViolationCard({ violation, index }: { violation: Violation; index: numb
         className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 hover:bg-white/5 transition-colors gap-2 sm:gap-4"
       >
         <div className="flex items-start sm:items-center gap-3 min-w-0">
-          <div className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${config.bgColor} ${config.color}`}>
+          <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${config.bgColor} ${config.color}`}>
             <Icon className="w-4 h-4" />
           </div>
           <div className="text-left min-w-0 flex-1">
@@ -172,9 +172,9 @@ function ViolationCard({ violation, index }: { violation: Violation; index: numb
             {Math.round(violation.confidence * 100)}% confident
           </span>
           {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 flex-shrink-0" />
+            <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
           )}
         </div>
       </button>
@@ -234,7 +234,7 @@ function ImageViolationCard({ violation }: { violation: ImageViolation }) {
     <div className={`rounded-xl border ${config.borderColor} ${config.bgColor} overflow-hidden`}>
       {/* Header */}
       <div className="flex items-start gap-4 p-4">
-        <div className={`flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl ${config.bgColor} ${config.color} border ${config.borderColor}`}>
+        <div className={`shrink-0 flex items-center justify-center w-10 h-10 rounded-xl ${config.bgColor} ${config.color} border ${config.borderColor}`}>
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
@@ -370,10 +370,23 @@ function ImageModerationScores({
     scores.nudity.suggestive
   );
 
+  // New scoring thresholds:
+  // >= 80: Safe (green)
+  // >= 60: Needs Review (amber)
+  // >= 40: Warning (orange)
+  // < 40: Critical Issues Detected (red) - any category risk >= 60%
   const getSafetyColor = () => {
     if (safetyScore >= 80) return { stroke: "#22c55e", bg: "bg-green-500/20", border: "border-green-500/30", text: "text-green-400" };
     if (safetyScore >= 60) return { stroke: "#f59e0b", bg: "bg-amber-500/20", border: "border-amber-500/30", text: "text-amber-400" };
+    if (safetyScore >= 40) return { stroke: "#f97316", bg: "bg-orange-500/20", border: "border-orange-500/30", text: "text-orange-400" };
     return { stroke: "#ef4444", bg: "bg-red-500/20", border: "border-red-500/30", text: "text-red-400" };
+  };
+
+  const getSafetyStatus = () => {
+    if (safetyScore >= 80) return "Safe";
+    if (safetyScore >= 60) return "Review Needed";
+    if (safetyScore >= 40) return "Warning";
+    return "Critical Issues";
   };
 
   const safetyConfig = getSafetyColor();
@@ -393,8 +406,8 @@ function ImageModerationScores({
         </div>
         <div className="text-center sm:text-right">
           <div className={`text-2xl sm:text-3xl font-bold ${safetyConfig.text}`}>{safetyScore}%</div>
-          <div className="text-xs text-slate-500">
-            {safetyScore >= 80 ? "Safe" : safetyScore >= 60 ? "Review Needed" : "Issues Detected"}
+          <div className={`text-xs ${safetyConfig.text}`}>
+            {getSafetyStatus()}
           </div>
         </div>
       </div>
@@ -476,8 +489,28 @@ function ImageModerationScores({
         </div>
       )}
 
+      {/* Critical Warning - Safety below 40% */}
+      {safetyScore < 40 && (
+        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <XCircle className="w-5 h-5 text-red-400" />
+          <span className="text-sm text-red-300">
+            <strong>Critical:</strong> High-risk content detected. This image is not suitable for advertising.
+          </span>
+        </div>
+      )}
+
+      {/* Warning - Safety between 40-59% */}
+      {safetyScore >= 40 && safetyScore < 60 && (
+        <div className="flex items-center gap-2 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+          <AlertTriangle className="w-5 h-5 text-orange-400" />
+          <span className="text-sm text-orange-300">
+            <strong>Warning:</strong> Potentially problematic content detected. Review before publishing.
+          </span>
+        </div>
+      )}
+
       {/* Safe Content Indicator */}
-      {scores.nudity.none > 0.8 && maxNudity < 0.1 && scores.violence < 0.1 && scores.gore < 0.1 && (
+      {safetyScore >= 80 && scores.nudity.none > 0.8 && maxNudity < 0.1 && scores.violence < 0.1 && scores.gore < 0.1 && scores.offensive < 0.1 && (
         <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
           <CheckCircle className="w-5 h-5 text-green-400" />
           <span className="text-sm text-green-300">Image content appears safe for advertising</span>
@@ -673,7 +706,7 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
           </h3>
           <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+              <div className="shrink-0 p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
                 <Scan className="w-5 h-5 text-cyan-400" />
               </div>
               <div className="flex-1 min-w-0">

@@ -446,7 +446,7 @@ function createProfanityViolation(profanityMatches: Array<{ type: string; match:
 
 /**
  * Calculate overall safety score (0-100, higher is safer)
- * If any critical category has a high score, the overall safety is capped
+ * If any critical category has a high risk score (>60%), the overall safety is capped below 40%
  */
 function calculateOverallSafetyScore(scores: SightEngineModerationScores): number {
   // Get max nudity score
@@ -458,27 +458,37 @@ function calculateOverallSafetyScore(scores: SightEngineModerationScores): numbe
     scores.nudity.suggestive * 0.7 // Slightly lower weight for just suggestive
   );
 
-  // Check for critical issues - if any category exceeds critical threshold, cap the score
-  const criticalChecks = [
-    { score: maxNudity, threshold: 0.5, maxSafetyScore: 20, label: "nudity" },
-    { score: scores.gore, threshold: 0.3, maxSafetyScore: 15, label: "gore" },
-    { score: scores.self_harm, threshold: 0.3, maxSafetyScore: 10, label: "self_harm" },
-    { score: scores.recreational_drug, threshold: 0.5, maxSafetyScore: 25, label: "drugs" },
-    { score: scores.violence, threshold: 0.5, maxSafetyScore: 30, label: "violence" },
-    { score: scores.offensive, threshold: 0.5, maxSafetyScore: 15, label: "offensive" },
+  // All risk categories to check
+  const riskCategories = [
+    { score: maxNudity, label: "nudity" },
+    { score: scores.gore, label: "gore" },
+    { score: scores.self_harm, label: "self_harm" },
+    { score: scores.recreational_drug, label: "drugs" },
+    { score: scores.violence, label: "violence" },
+    { score: scores.offensive, label: "offensive" },
   ];
 
-  // Find the lowest cap from any critical issue
+  // Find the highest risk score across all categories
+  const maxRiskScore = Math.max(...riskCategories.map(c => c.score));
+
+  // Cap safety score based on worst category
+  // If any risk is >= 60% (critically high), safety must be <= 39% (critically low)
+  // If any risk is >= 40%, safety is capped at 59%
+  // If any risk is >= 20%, safety is capped at 79%
   let safetyCap = 100;
-  for (const check of criticalChecks) {
-    if (check.score >= check.threshold) {
-      // If score exceeds critical threshold, use the cap
-      safetyCap = Math.min(safetyCap, check.maxSafetyScore);
-    } else if (check.score >= check.threshold * 0.6) {
-      // If approaching critical, start reducing the cap
-      const warningCap = check.maxSafetyScore + 30; // e.g., 50 for nudity
-      safetyCap = Math.min(safetyCap, warningCap);
-    }
+  
+  if (maxRiskScore >= 0.8) {
+    // Extremely high risk (80%+) -> Max 15% safety
+    safetyCap = 15;
+  } else if (maxRiskScore >= 0.6) {
+    // Critical risk (60%+) -> Max 39% safety (below 40% threshold)
+    safetyCap = 39;
+  } else if (maxRiskScore >= 0.4) {
+    // High risk (40%+) -> Max 59% safety
+    safetyCap = 59;
+  } else if (maxRiskScore >= 0.2) {
+    // Moderate risk (20%+) -> Max 79% safety
+    safetyCap = 79;
   }
 
   // Weight the different categories for base score calculation
@@ -505,7 +515,7 @@ function calculateOverallSafetyScore(scores: SightEngineModerationScores): numbe
   // Calculate base score
   const baseScore = Math.max(0, Math.round((1 - penalty) * 100));
   
-  // Apply the cap from critical issues
+  // Apply the cap - safety score cannot exceed the cap based on worst risk
   return Math.min(baseScore, safetyCap);
 }
 
