@@ -13,6 +13,7 @@ import {
   Brain,
   Layers
 } from "lucide-react";
+import { ShaderAnimation } from "@/components/ui/shader-animation";
 
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
@@ -22,36 +23,12 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen overflow-hidden">
-      {/* Animated orbs background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div 
-          className="absolute w-[600px] h-[600px] rounded-full opacity-20"
-          style={{
-            background: "radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%)",
-            top: "-200px",
-            right: "-100px",
-            animation: "float 20s ease-in-out infinite",
-          }}
-        />
-        <div 
-          className="absolute w-[500px] h-[500px] rounded-full opacity-15"
-          style={{
-            background: "radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, transparent 70%)",
-            bottom: "-150px",
-            left: "-100px",
-            animation: "float 25s ease-in-out infinite reverse",
-          }}
-        />
-        <div 
-          className="absolute w-[300px] h-[300px] rounded-full opacity-10"
-          style={{
-            background: "radial-gradient(circle, rgba(16, 185, 129, 0.5) 0%, transparent 70%)",
-            top: "40%",
-            left: "60%",
-            animation: "float 15s ease-in-out infinite",
-          }}
-        />
+    <div className="min-h-screen overflow-hidden relative">
+      {/* Three.js Shader Animation Background */}
+      <div className="fixed inset-0 z-0">
+        <ShaderAnimation />
+        {/* Dark overlay to improve text readability */}
+        <div className="absolute inset-0 bg-black/40" />
       </div>
 
       {/* Navigation */}
@@ -102,7 +79,7 @@ export default function LandingPage() {
               </span>
               <br />
               <span className="text-white">for Modern Business</span>
-            </h1>
+          </h1>
 
             {/* Subheadline */}
             <p 
@@ -308,13 +285,6 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Animation keyframes */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-30px) rotate(5deg); }
-        }
-      `}</style>
     </div>
   );
 }
