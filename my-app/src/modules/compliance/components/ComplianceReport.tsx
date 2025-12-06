@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { ComplianceReport as ComplianceReportType, Violation, ImageViolation, Severity, SightEngineModerationScores } from "../types";
-import { PLATFORM_DISPLAY_NAMES, PRODUCT_CATEGORY_DISPLAY_NAMES } from "../constants/policies";
+import { PLATFORM_DISPLAY_NAMES, getProductCategoryDisplayName } from "../constants/policies";
 
 interface ComplianceReportProps {
   report: ComplianceReportType;
@@ -151,7 +151,7 @@ function ViolationCard({ violation, index }: { violation: Violation; index: numb
         className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 hover:bg-white/5 transition-colors gap-2 sm:gap-4"
       >
         <div className="flex items-start sm:items-center gap-3 min-w-0">
-          <div className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${config.bgColor} ${config.color}`}>
+          <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${config.bgColor} ${config.color}`}>
             <Icon className="w-4 h-4" />
           </div>
           <div className="text-left min-w-0 flex-1">
@@ -172,9 +172,9 @@ function ViolationCard({ violation, index }: { violation: Violation; index: numb
             {Math.round(violation.confidence * 100)}% confident
           </span>
           {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 flex-shrink-0" />
+            <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
           )}
         </div>
       </button>
@@ -234,7 +234,7 @@ function ImageViolationCard({ violation }: { violation: ImageViolation }) {
     <div className={`rounded-xl border ${config.borderColor} ${config.bgColor} overflow-hidden`}>
       {/* Header */}
       <div className="flex items-start gap-4 p-4">
-        <div className={`flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl ${config.bgColor} ${config.color} border ${config.borderColor}`}>
+        <div className={`shrink-0 flex items-center justify-center w-10 h-10 rounded-xl ${config.bgColor} ${config.color} border ${config.borderColor}`}>
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
@@ -312,26 +312,39 @@ function ImageViolationCard({ violation }: { violation: ImageViolation }) {
 function ModerationScoreBar({ 
   label, 
   score, 
-  icon: Icon, 
-  inverted = false 
+  icon: Icon,
+  isSafeMetric = false // For metrics where higher = better (like "safe" score)
 }: { 
   label: string; 
   score: number; 
   icon: typeof Eye;
-  inverted?: boolean;
+  isSafeMetric?: boolean;
 }) {
-  // For inverted scores (like "safe" scores), higher is better
-  // For regular scores, lower is better
   const displayScore = Math.round(score * 100);
-  const effectiveScore = inverted ? score : 1 - score;
   
+  // For risk metrics: high score = bad (red), low score = good (green/empty)
+  // For safe metrics: high score = good (green), low score = bad (red)
   const getColor = () => {
-    if (effectiveScore >= 0.8) return { bar: "bg-green-500", text: "text-green-400" };
-    if (effectiveScore >= 0.5) return { bar: "bg-amber-500", text: "text-amber-400" };
-    return { bar: "bg-red-500", text: "text-red-400" };
+    if (isSafeMetric) {
+      // Higher is better
+      if (score >= 0.8) return { bar: "bg-green-500", text: "text-green-400", border: "border-green-500/30" };
+      if (score >= 0.5) return { bar: "bg-amber-500", text: "text-amber-400", border: "border-amber-500/30" };
+      return { bar: "bg-red-500", text: "text-red-400", border: "border-red-500/30" };
+    } else {
+      // Lower is better (risk score)
+      if (score <= 0.1) return { bar: "bg-transparent", text: "text-green-400", border: "border-green-500/50" };
+      if (score <= 0.3) return { bar: "bg-green-500", text: "text-green-400", border: "border-green-500/30" };
+      if (score <= 0.5) return { bar: "bg-amber-500", text: "text-amber-400", border: "border-amber-500/30" };
+      if (score <= 0.65) return { bar: "bg-orange-500", text: "text-orange-400", border: "border-orange-500/30" };
+      return { bar: "bg-red-500", text: "text-red-400", border: "border-red-500/30" };
+    }
   };
   
-  const { bar, text } = getColor();
+  const { bar, text, border } = getColor();
+  
+  // For risk metrics: bar fills based on the risk score directly
+  // High risk = full bar (bad), low risk = empty bar (good)
+  const barWidth = isSafeMetric ? displayScore : displayScore;
   
   return (
     <div className="space-y-1">
@@ -341,14 +354,16 @@ function ModerationScoreBar({
           <span>{label}</span>
         </div>
         <span className={`font-mono font-medium ${text}`}>
-          {inverted ? `${displayScore}%` : `${displayScore}%`}
+          {displayScore}%
         </span>
       </div>
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-        <div 
-          className={`h-full ${bar} transition-all duration-500 rounded-full`}
-          style={{ width: `${inverted ? displayScore : 100 - displayScore}%` }}
-        />
+      <div className={`h-2 bg-slate-800 rounded-full overflow-hidden border ${border}`}>
+        {barWidth > 0 && (
+          <div 
+            className={`h-full ${bar} transition-all duration-500 rounded-full`}
+            style={{ width: `${barWidth}%` }}
+          />
+        )}
       </div>
     </div>
   );
@@ -356,10 +371,16 @@ function ModerationScoreBar({
 
 function ImageModerationScores({ 
   scores, 
-  safetyScore 
+  safetyScore,
+  imageViolations = [],
+  hasProfanity = false,
+  profanityMatches = [],
 }: { 
   scores: SightEngineModerationScores;
   safetyScore: number;
+  imageViolations?: ImageViolation[];
+  hasProfanity?: boolean;
+  profanityMatches?: string[];
 }) {
   // Calculate max nudity score for display
   const maxNudity = Math.max(
@@ -370,13 +391,56 @@ function ImageModerationScores({
     scores.nudity.suggestive
   );
 
+  // Thresholds for critical issues
+  const CRITICAL_THRESHOLD = 0.65;
+  const AI_CRITICAL_THRESHOLD = 0.85;
+
+  // Check for text-based issues from violations
+  const hasTextProfanity = hasProfanity || profanityMatches.length > 0 || 
+    imageViolations.some(v => v.category.toLowerCase().includes("profanity"));
+  const hasTextSelfHarm = imageViolations.some(v => 
+    v.category.toLowerCase().includes("self-harm") || v.policyReference.toLowerCase().includes("self-harm")
+  );
+  const hasTextViolence = imageViolations.some(v => 
+    v.category.toLowerCase().includes("violence") && v.category.toLowerCase().includes("text")
+  );
+  const hasTextExtremism = imageViolations.some(v => 
+    v.category.toLowerCase().includes("extremist")
+  );
+  const hasTextDrugs = imageViolations.some(v => 
+    v.category.toLowerCase().includes("drug") && v.category.toLowerCase().includes("text")
+  );
+  
+  // Count total text issues
+  const textIssueCount = [hasTextProfanity, hasTextSelfHarm, hasTextViolence, hasTextExtremism, hasTextDrugs].filter(Boolean).length;
+  const hasTextIssues = textIssueCount > 0;
+
+  // Check for any critical issues that should hide the safety score
+  const hasCriticalIssue = 
+    maxNudity >= CRITICAL_THRESHOLD ||
+    scores.violence >= CRITICAL_THRESHOLD ||
+    scores.gore >= CRITICAL_THRESHOLD ||
+    scores.self_harm >= CRITICAL_THRESHOLD ||
+    scores.recreational_drug >= CRITICAL_THRESHOLD ||
+    scores.offensive >= CRITICAL_THRESHOLD ||
+    scores.ai_generated >= AI_CRITICAL_THRESHOLD ||
+    hasTextProfanity ||
+    hasTextSelfHarm ||
+    hasTextExtremism;
+
   const getSafetyColor = () => {
+    if (hasCriticalIssue) return { stroke: "#ef4444", bg: "bg-red-500/20", border: "border-red-500/30", text: "text-red-400" };
     if (safetyScore >= 80) return { stroke: "#22c55e", bg: "bg-green-500/20", border: "border-green-500/30", text: "text-green-400" };
     if (safetyScore >= 60) return { stroke: "#f59e0b", bg: "bg-amber-500/20", border: "border-amber-500/30", text: "text-amber-400" };
     return { stroke: "#ef4444", bg: "bg-red-500/20", border: "border-red-500/30", text: "text-red-400" };
   };
 
   const safetyConfig = getSafetyColor();
+  
+  // Adjusted safety score if text issues detected
+  const adjustedSafetyScore = hasTextIssues 
+    ? Math.min(safetyScore, hasTextProfanity || hasTextSelfHarm || hasTextExtremism ? 20 : 50)
+    : safetyScore;
 
   return (
     <div className="space-y-6">
@@ -392,18 +456,73 @@ function ImageModerationScores({
           </div>
         </div>
         <div className="text-center sm:text-right">
-          <div className={`text-2xl sm:text-3xl font-bold ${safetyConfig.text}`}>{safetyScore}%</div>
+          <div className={`text-2xl sm:text-3xl font-bold ${safetyConfig.text}`}>{adjustedSafetyScore}%</div>
           <div className="text-xs text-slate-500">
-            {safetyScore >= 80 ? "Safe" : safetyScore >= 60 ? "Review Needed" : "Issues Detected"}
+            {hasCriticalIssue ? "Critical Issues" : adjustedSafetyScore >= 80 ? "Safe" : adjustedSafetyScore >= 60 ? "Review Needed" : "Issues Detected"}
           </div>
         </div>
       </div>
+
+      {/* Text Content Issues Alert - Show when profanity or harmful text detected */}
+      {hasTextIssues && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
+              <AlertOctagon className="w-5 h-5 text-red-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h5 className="font-semibold text-red-400 mb-2">Text Content Issues Detected</h5>
+              <p className="text-sm text-slate-300 mb-3">
+                Problematic text was found in your image via OCR scanning:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {hasTextProfanity && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full text-xs font-medium text-red-300">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Profanity Detected
+                    {profanityMatches.length > 0 && (
+                      <span className="text-red-400">({profanityMatches.join(", ")})</span>
+                    )}
+                  </span>
+                )}
+                {hasTextSelfHarm && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full text-xs font-medium text-red-300">
+                    <Heart className="w-3.5 h-3.5" />
+                    Self-Harm References
+                  </span>
+                )}
+                {hasTextViolence && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 rounded-full text-xs font-medium text-amber-300">
+                    <Swords className="w-3.5 h-3.5" />
+                    Violence References
+                  </span>
+                )}
+                {hasTextExtremism && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full text-xs font-medium text-red-300">
+                    <AlertOctagon className="w-3.5 h-3.5" />
+                    Extremist Content
+                  </span>
+                )}
+                {hasTextDrugs && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 rounded-full text-xs font-medium text-amber-300">
+                    <Pill className="w-3.5 h-3.5" />
+                    Drug References
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Moderation Categories */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left Column */}
         <div className="space-y-4">
-          <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Content Analysis</h5>
+          <div className="flex items-center justify-between">
+            <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Visual Content Analysis</h5>
+            <span className="text-xs text-slate-500">Imagery detection</span>
+          </div>
           <div className="space-y-3 bg-slate-800/30 rounded-lg p-4 border border-slate-700/50">
             <ModerationScoreBar 
               label="Nudity/Sexual" 
@@ -425,7 +544,10 @@ function ImageModerationScores({
 
         {/* Right Column */}
         <div className="space-y-4">
-          <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Safety Checks</h5>
+          <div className="flex items-center justify-between">
+            <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Safety Checks</h5>
+            <span className="text-xs text-slate-500">Content & text</span>
+          </div>
           <div className="space-y-3 bg-slate-800/30 rounded-lg p-4 border border-slate-700/50">
             <ModerationScoreBar 
               label="Recreational Drugs" 
@@ -438,9 +560,15 @@ function ImageModerationScores({
               icon={Heart}
             />
             <ModerationScoreBar 
-              label="Offensive Content" 
+              label="Offensive Symbols" 
               score={scores.offensive} 
               icon={AlertOctagon}
+            />
+            {/* Text Profanity Score - derived from OCR detection */}
+            <ModerationScoreBar 
+              label="Text Profanity (OCR)" 
+              score={hasTextProfanity ? 1.0 : 0} 
+              icon={Type}
             />
             <ModerationScoreBar 
               label="AI-Generated" 
@@ -449,6 +577,15 @@ function ImageModerationScores({
             />
           </div>
         </div>
+      </div>
+      
+      {/* Note about detection */}
+      <div className="text-xs text-slate-500 px-1">
+        <strong>Note:</strong> Visual scores detect imagery only (exposed skin, blood, weapons, etc.). 
+        Text/profanity in images is detected via OCR and shown separately above.
+        {!hasTextIssues && imageViolations.length === 0 && (
+          <span className="text-slate-600"> No text issues detected in this image.</span>
+        )}
       </div>
 
       {/* Detailed Nudity Breakdown (if any nudity detected) */}
@@ -476,8 +613,8 @@ function ImageModerationScores({
         </div>
       )}
 
-      {/* Safe Content Indicator */}
-      {scores.nudity.none > 0.8 && maxNudity < 0.1 && scores.violence < 0.1 && scores.gore < 0.1 && (
+      {/* Safe Content Indicator - only show when no critical issues */}
+      {!hasCriticalIssue && !hasTextIssues && scores.nudity.none > 0.8 && maxNudity < 0.1 && scores.violence < 0.1 && scores.gore < 0.1 && (
         <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
           <CheckCircle className="w-5 h-5 text-green-400" />
           <span className="text-sm text-green-300">Image content appears safe for advertising</span>
@@ -551,6 +688,9 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
   const warningCount = allViolations.filter(
     (v) => v.severity === "warning"
   ).length;
+  const infoCount = allViolations.filter(
+    (v) => v.severity === "info"
+  ).length;
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -572,7 +712,7 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
               </div>
             </div>
             <div className="mt-2 text-sm text-slate-400">
-              {PRODUCT_CATEGORY_DISPLAY_NAMES[report.productCategory]}
+              {getProductCategoryDisplayName(report.productCategory)}
             </div>
           </div>
         </div>
@@ -589,7 +729,13 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
             {warningCount > 0 && (
               <div className="flex items-center gap-1 text-amber-400">
                 <AlertTriangle className="w-4 h-4" />
-                <span className="text-sm font-medium">{warningCount} Warnings</span>
+                <span className="text-sm font-medium">{warningCount} Warning{warningCount !== 1 ? "s" : ""}</span>
+              </div>
+            )}
+            {infoCount > 0 && (
+              <div className="flex items-center gap-1 text-blue-400">
+                <Info className="w-4 h-4" />
+                <span className="text-sm font-medium">{infoCount} Info</span>
               </div>
             )}
           </div>
@@ -658,7 +804,10 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
           <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700/50">
             <ImageModerationScores 
               scores={report.imageModerationScores} 
-              safetyScore={report.imageSafetyScore} 
+              safetyScore={report.imageSafetyScore}
+              imageViolations={report.imageViolations}
+              hasProfanity={report.hasProfanity}
+              profanityMatches={report.profanityMatches}
             />
           </div>
         </div>
@@ -673,14 +822,14 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
           </h3>
           <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+              <div className="shrink-0 p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
                 <Scan className="w-5 h-5 text-cyan-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-slate-500 mb-2">
                   Text detected in your image via optical character recognition:
                 </p>
-                <p className="text-sm text-slate-300 bg-slate-800/50 p-3 rounded-lg font-mono whitespace-pre-wrap break-words">
+                <p className="text-sm text-slate-300 bg-slate-800/50 p-3 rounded-lg font-mono whitespace-pre-wrap wrap-break-word">
                   {report.extractedImageText}
                 </p>
                 {report.imageTextViolations && report.imageTextViolations.length > 0 && (
@@ -713,6 +862,27 @@ export function ComplianceReport({ report, onReset }: ComplianceReportProps) {
           <div className="space-y-3">
             {report.imageTextViolations.map((violation, idx) => (
               <ViolationCard key={violation.id} violation={violation} index={idx} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Image Violations */}
+      {report.imageViolations && report.imageViolations.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-200">
+            <ImageIcon className="w-5 h-5 text-rose-400" />
+            Image Violations ({report.imageViolations.length})
+          </h3>
+          <div className="bg-rose-500/5 border border-rose-500/20 rounded-lg p-4 mb-4">
+            <p className="text-sm text-slate-400">
+              The following issues were detected in your image by SightEngine AI moderation.
+              Address these issues before publishing.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {report.imageViolations.map((violation) => (
+              <ImageViolationCard key={violation.id} violation={violation} />
             ))}
           </div>
         </div>

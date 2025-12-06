@@ -134,12 +134,21 @@ export async function analyzeImageCompliance(
 }
 
 export function calculateComplianceScore(
-  textViolations: Violation[]
+  textViolations: Violation[],
+  imageViolations: ImageViolation[] = [],
+  imageTextViolations: Violation[] = []
 ): { score: number; status: "pass" | "fail" | "review" } {
   let score = 100;
 
-  // Deduct points for text violations only
-  for (const violation of textViolations) {
+  // Combine all violations for scoring
+  const allViolations = [
+    ...textViolations,
+    ...imageViolations,
+    ...imageTextViolations,
+  ];
+
+  // Deduct points for ALL violations
+  for (const violation of allViolations) {
     const config = SEVERITY_CONFIG[violation.severity];
     score -= config.weight * violation.confidence;
   }
@@ -147,13 +156,14 @@ export function calculateComplianceScore(
   // Ensure score stays in 0-100 range
   score = Math.max(0, Math.min(100, Math.round(score)));
 
-  // Determine status
-  let status: "pass" | "fail" | "review";
-  const hasCritical = textViolations.some((v) => v.severity === "critical");
+  // Determine status based on ALL violations
+  const hasCritical = allViolations.some((v) => v.severity === "critical");
+  const hasWarning = allViolations.some((v) => v.severity === "warning");
 
+  let status: "pass" | "fail" | "review";
   if (hasCritical || score < 60) {
     status = "fail";
-  } else if (score < 80) {
+  } else if (hasWarning || score < 80) {
     status = "review";
   } else {
     status = "pass";
@@ -204,7 +214,7 @@ export function generateComplianceReport(
     })),
   ] : [];
 
-  const { score, status } = calculateComplianceScore(allTextViolations);
+  const { score, status } = calculateComplianceScore(allTextViolations, imageViolations, imageTextViolations);
 
   // Combine recommendations
   const recommendations = [
@@ -268,6 +278,8 @@ export function generateComplianceReport(
     recommendations,
     imageModerationScores: sightEngineResult?.moderationScores,
     imageSafetyScore: sightEngineResult?.overallSafetyScore,
+    hasProfanity: sightEngineResult?.hasProfanity,
+    profanityMatches: sightEngineResult?.profanityMatches,
   };
 }
 

@@ -44,59 +44,88 @@ interface SightEngineApiResponse {
   };
   recreational_drug?: {
     prob: number;
+    classes?: {
+      cannabis?: number;
+      cannabis_logo_only?: number;
+      cannabis_plant?: number;
+      cannabis_drug?: number;
+      recreational_drugs_not_cannabis?: number;
+    };
   };
   medical?: {
     prob: number;
-    is_medical: boolean;
+    classes?: {
+      pills?: number;
+      paraphernalia?: number;
+    };
   };
   gore?: {
     prob: number;
+    classes?: Record<string, number>;
+    type?: {
+      animated?: number;
+      fake?: number;
+      real?: number;
+    };
   };
   violence?: {
     prob: number;
+    classes?: {
+      physical_violence?: number;
+      firearm_threat?: number;
+      combat_sport?: number;
+    };
   };
-  self_harm?: {
+  // Note: API returns "self-harm" with hyphen!
+  "self-harm"?: {
     prob: number;
+    type?: {
+      real?: number;
+      fake?: number;
+      animated?: number;
+    };
   };
-  // AI-generated detection is returned under "type" field, not "genai"
+  // AI-generated detection is returned under "type" field
   type?: {
     ai_generated: number;
   };
-  qr_content?: {
-    type?: string;
-    link?: string;
+  // QR code detection
+  qr?: {
+    personal?: Array<{ type: string; match: string }>;
+    link?: Array<{ type: string; match: string }>;
+    social?: Array<{ type: string; match: string }>;
+    spam?: Array<{ type: string; match: string }>;
+    profanity?: Array<{ type: string; match: string }>;
+    blacklist?: Array<{ type: string; match: string }>;
   };
-  // Offensive content detection
+  // Offensive content detection - no "prob" field, individual scores directly!
   offensive?: {
-    prob: number;
-    nazi?: number;
-    confederate?: number;
-    supremacist?: number;
-    terrorist?: number;
-    middle_finger?: number;
+    nazi: number;
+    asian_swastika?: number;
+    confederate: number;
+    supremacist: number;
+    terrorist: number;
+    middle_finger: number;
   };
-  // Text content detection (OCR)
+  // Text content detection (OCR) - arrays of detections, no "words" field!
   text?: {
-    has_artificial?: number;
-    has_natural?: number;
-    profanity?: Array<{
-      type: string;
-      match: string;
-    }>;
-    personal?: Array<{
-      type: string;
-      match: string;
-    }>;
-    link?: Array<{
-      type: string;
-      match: string;
-    }>;
-    social?: Array<{
-      type: string;
-      match: string;
-    }>;
-    // Extracted text from the image
-    words?: string[];
+    profanity?: Array<{ type: string; match: string }>;
+    personal?: Array<{ type: string; match: string }>;
+    link?: Array<{ type: string; match: string }>;
+    social?: Array<{ type: string; match: string }>;
+    extremism?: Array<{ type: string; match: string }>;
+    medical?: Array<{ type: string; match: string }>;
+    drug?: Array<{ type: string; match: string }>;
+    weapon?: Array<{ type: string; match: string }>;
+    "content-trade"?: Array<{ type: string; match: string }>;
+    "money-transaction"?: Array<{ type: string; match: string }>;
+    spam?: Array<{ type: string; match: string }>;
+    violence?: Array<{ type: string; match: string }>;
+    "self-harm"?: Array<{ type: string; match: string }>;
+  };
+  media?: {
+    id: string;
+    uri: string;
   };
   error?: {
     message: string;
@@ -130,6 +159,16 @@ export async function analyzeImageByUrl(
   
   // Debug: Log the full SightEngine response
   console.log("[SightEngine URL] Full response:", JSON.stringify(data, null, 2));
+  
+  // Log text detection specifically  
+  if (data.text) {
+    console.log("[SightEngine URL] Text detection results:");
+    console.log("  - Profanity:", data.text.profanity);
+    console.log("  - Violence text:", data.text.violence);
+    console.log("  - Self-harm text:", data.text["self-harm"]);
+  } else {
+    console.log("[SightEngine URL] No text detection in response");
+  }
   
   if (data.status === "failure" && data.error) {
     throw new Error(`SightEngine error: ${data.error.message}`);
@@ -190,6 +229,16 @@ export async function analyzeImageByUpload(
   // Debug: Log the full SightEngine response
   console.log("[SightEngine Upload] Full response:", JSON.stringify(data, null, 2));
   
+  // Log text detection specifically
+  if (data.text) {
+    console.log("[SightEngine Upload] Text detection results:");
+    console.log("  - Profanity:", data.text.profanity);
+    console.log("  - Violence text:", data.text.violence);
+    console.log("  - Self-harm text:", data.text["self-harm"]);
+  } else {
+    console.log("[SightEngine Upload] No text detection in response");
+  }
+  
   if (data.status === "failure" && data.error) {
     throw new Error(`SightEngine error: ${data.error.message}`);
   }
@@ -215,9 +264,69 @@ export async function analyzeImageWithSightEngine(
 }
 
 /**
+ * Calculate max offensive score from individual category scores
+ */
+function getMaxOffensiveScore(offensive?: SightEngineApiResponse["offensive"]): number {
+  if (!offensive) return 0;
+  return Math.max(
+    offensive.nazi ?? 0,
+    offensive.asian_swastika ?? 0,
+    offensive.confederate ?? 0,
+    offensive.supremacist ?? 0,
+    offensive.terrorist ?? 0,
+    offensive.middle_finger ?? 0
+  );
+}
+
+/**
+ * Extract flagged text matches from all text detection categories
+ * These are specific problematic text items detected by SightEngine (not general OCR)
+ */
+function extractFlaggedTextFromDetections(text?: SightEngineApiResponse["text"]): string[] {
+  if (!text) return [];
+  
+  const allMatches: string[] = [];
+  
+  // Collect all detected text strings from various categories
+  const categories = [
+    text.profanity,
+    text.personal,
+    text.link,
+    text.social,
+    text.extremism,
+    text.medical,
+    text.drug,
+    text.weapon,
+    text["content-trade"],
+    text["money-transaction"],
+    text.spam,
+    text.violence,
+    text["self-harm"],
+  ];
+  
+  for (const category of categories) {
+    if (category && Array.isArray(category)) {
+      for (const item of category) {
+        if (item.match) {
+          allMatches.push(item.match);
+        }
+      }
+    }
+  }
+  
+  return allMatches;
+}
+
+/**
  * Parse SightEngine API response into our format
  */
 function parseSightEngineResponse(response: SightEngineApiResponse): SightEngineResult {
+  // Access self-harm with hyphen (API uses hyphen, not underscore)
+  const selfHarmData = response["self-harm"];
+  
+  // Calculate offensive score as max of individual categories
+  const offensiveScore = getMaxOffensiveScore(response.offensive);
+  
   const moderationScores: SightEngineModerationScores = {
     nudity: {
       sexual_activity: response.nudity?.sexual_activity ?? 0,
@@ -231,16 +340,17 @@ function parseSightEngineResponse(response: SightEngineApiResponse): SightEngine
     medical: response.medical?.prob ?? 0,
     gore: response.gore?.prob ?? 0,
     violence: response.violence?.prob ?? 0,
-    self_harm: response.self_harm?.prob ?? 0,
+    self_harm: selfHarmData?.prob ?? 0,
     ai_generated: response.type?.ai_generated ?? 0,
-    offensive: response.offensive?.prob ?? 0,
+    offensive: offensiveScore,
   };
   
   const violations = generateViolationsFromScores(moderationScores, response);
   const overallSafetyScore = calculateOverallSafetyScore(moderationScores);
   
-  // Extract text from image if available
-  const extractedText = response.text?.words?.join(" ") || "";
+  // Extract flagged text matches from image (these are specific problematic text items, not general OCR)
+  const flaggedTextMatches = extractFlaggedTextFromDetections(response.text);
+  const extractedText = flaggedTextMatches.join(" ");
   const hasProfanity = (response.text?.profanity?.length ?? 0) > 0;
   
   return {
@@ -324,6 +434,46 @@ function generateViolationsFromScores(scores: SightEngineModerationScores, respo
     violations.push(createProfanityViolation(response.text.profanity));
   }
   
+  // Check for personal information in image text (PII)
+  if (response?.text?.personal && response.text.personal.length > 0) {
+    violations.push(createTextIssueViolation("personal_info", response.text.personal));
+  }
+  
+  // Check for external links in image
+  if (response?.text?.link && response.text.link.length > 0) {
+    violations.push(createTextIssueViolation("link", response.text.link));
+  }
+  
+  // Check for social media handles in image
+  if (response?.text?.social && response.text.social.length > 0) {
+    violations.push(createTextIssueViolation("social", response.text.social));
+  }
+  
+  // Check for extremism text
+  if (response?.text?.extremism && response.text.extremism.length > 0) {
+    violations.push(createTextIssueViolation("extremism", response.text.extremism));
+  }
+  
+  // Check for drug references in text
+  if (response?.text?.drug && response.text.drug.length > 0) {
+    violations.push(createTextIssueViolation("drug_text", response.text.drug));
+  }
+  
+  // Check for weapon references in text
+  if (response?.text?.weapon && response.text.weapon.length > 0) {
+    violations.push(createTextIssueViolation("weapon_text", response.text.weapon));
+  }
+  
+  // Check for violence text
+  if (response?.text?.violence && response.text.violence.length > 0) {
+    violations.push(createTextIssueViolation("violence_text", response.text.violence));
+  }
+  
+  // Check for self-harm text
+  if (response?.text?.["self-harm"] && response.text["self-harm"].length > 0) {
+    violations.push(createTextIssueViolation("self_harm_text", response.text["self-harm"]));
+  }
+  
   return violations;
 }
 
@@ -405,10 +555,11 @@ function createAIGeneratedViolation(score: number): ImageViolation {
   };
 }
 
-function createOffensiveViolation(score: number, severity: Severity, details?: { nazi?: number; confederate?: number; supremacist?: number; terrorist?: number; middle_finger?: number }): ImageViolation {
+function createOffensiveViolation(score: number, severity: Severity, details?: SightEngineApiResponse["offensive"]): ImageViolation {
   // Determine specific offensive content types
   const offensiveTypes: string[] = [];
   if (details?.nazi && details.nazi > 0.3) offensiveTypes.push("nazi symbolism");
+  if (details?.asian_swastika && details.asian_swastika > 0.3) offensiveTypes.push("swastika");
   if (details?.confederate && details.confederate > 0.3) offensiveTypes.push("confederate imagery");
   if (details?.supremacist && details.supremacist > 0.3) offensiveTypes.push("supremacist content");
   if (details?.terrorist && details.terrorist > 0.3) offensiveTypes.push("terrorist-related content");
@@ -444,12 +595,91 @@ function createProfanityViolation(profanityMatches: Array<{ type: string; match:
   };
 }
 
+type TextIssueType = "personal_info" | "link" | "social" | "extremism" | "drug_text" | "weapon_text" | "violence_text" | "self_harm_text";
+
+const TEXT_ISSUE_CONFIG: Record<TextIssueType, { severity: Severity; category: string; policyRef: string; description: string; fix: string }> = {
+  personal_info: {
+    severity: "warning",
+    category: "Personal Information in Image",
+    policyRef: "Policy 4.1 – PII in Advertising",
+    description: "Image contains visible personal information",
+    fix: "Remove or blur any personal information (phone numbers, emails, addresses) from the image.",
+  },
+  link: {
+    severity: "info",
+    category: "External Links in Image",
+    policyRef: "Policy 4.2 – External URLs",
+    description: "Image contains external URLs or links",
+    fix: "Review external links for compliance. Some platforms restrict external URLs in ad imagery.",
+  },
+  social: {
+    severity: "info",
+    category: "Social Media Handles in Image",
+    policyRef: "Policy 4.3 – Social Media References",
+    description: "Image contains social media handles or references",
+    fix: "Ensure social media references comply with platform policies and don't direct users away from the ad platform.",
+  },
+  extremism: {
+    severity: "critical",
+    category: "Extremist Content in Image Text",
+    policyRef: "Policy 3.8 – Extremist Content",
+    description: "Image contains text with extremist or hateful content",
+    fix: "Remove all extremist content immediately. This content violates all advertising platform policies.",
+  },
+  drug_text: {
+    severity: "warning",
+    category: "Drug References in Image Text",
+    policyRef: "Policy 4.5 – Drug-Related Text",
+    description: "Image contains text referencing drugs or controlled substances",
+    fix: "Remove drug-related text or ensure it complies with platform policies for pharmaceutical advertising.",
+  },
+  weapon_text: {
+    severity: "warning",
+    category: "Weapon References in Image Text",
+    policyRef: "Policy 4.6 – Weapon Content",
+    description: "Image contains text referencing weapons",
+    fix: "Remove weapon references unless explicitly allowed for your product category and platform.",
+  },
+  violence_text: {
+    severity: "warning",
+    category: "Violent Content in Image Text",
+    policyRef: "Policy 3.3 – Violence References",
+    description: "Image contains text with violent references",
+    fix: "Remove violent language and use positive, constructive messaging instead.",
+  },
+  self_harm_text: {
+    severity: "critical",
+    category: "Self-Harm Content in Image Text",
+    policyRef: "Policy 3.5 – Self-Harm References",
+    description: "Image contains text referencing self-harm",
+    fix: "Remove self-harm references immediately. Consider using supportive, recovery-focused language if appropriate.",
+  },
+};
+
+function createTextIssueViolation(issueType: TextIssueType, matches: Array<{ type: string; match: string }>): ImageViolation {
+  const config = TEXT_ISSUE_CONFIG[issueType];
+  const matchStrings = matches.map(m => m.match).join(", ");
+  
+  return {
+    id: uuidv4(),
+    severity: config.severity,
+    category: config.category,
+    policyReference: config.policyRef,
+    policyDescription: `${config.description}: "${matchStrings}".`,
+    suggestedFix: config.fix,
+    confidence: 1.0,
+    imageIssueType: "graphic_content",
+  };
+}
+
 /**
  * Calculate overall safety score (0-100, higher is safer)
- * If any critical category has a high score, the overall safety is capped
+ * 
+ * CRITICAL RULE: If ANY category is >= 65%, image is flagged as UNSAFE (score capped at 20)
+ * WARNING: Categories >= 40% will reduce the score significantly
  */
 function calculateOverallSafetyScore(scores: SightEngineModerationScores): number {
-  // Get max nudity score
+  // Get max nudity score (weighted by severity)
   const maxNudity = Math.max(
     scores.nudity.sexual_activity,
     scores.nudity.sexual_display,
@@ -458,41 +688,67 @@ function calculateOverallSafetyScore(scores: SightEngineModerationScores): numbe
     scores.nudity.suggestive * 0.7 // Slightly lower weight for just suggestive
   );
 
-  // Check for critical issues - if any category exceeds critical threshold, cap the score
-  const criticalChecks = [
-    { score: maxNudity, threshold: 0.5, maxSafetyScore: 20, label: "nudity" },
-    { score: scores.gore, threshold: 0.3, maxSafetyScore: 15, label: "gore" },
-    { score: scores.self_harm, threshold: 0.3, maxSafetyScore: 10, label: "self_harm" },
-    { score: scores.recreational_drug, threshold: 0.5, maxSafetyScore: 25, label: "drugs" },
-    { score: scores.violence, threshold: 0.5, maxSafetyScore: 30, label: "violence" },
-    { score: scores.offensive, threshold: 0.5, maxSafetyScore: 15, label: "offensive" },
+  // All critical categories to check
+  const criticalCategories = [
+    { score: maxNudity, label: "nudity", weight: 1.0 },
+    { score: scores.gore, label: "gore", weight: 1.2 },           // Gore is very serious
+    { score: scores.self_harm, label: "self_harm", weight: 1.3 }, // Self-harm is most serious
+    { score: scores.recreational_drug, label: "drugs", weight: 1.0 },
+    { score: scores.violence, label: "violence", weight: 1.0 },
+    { score: scores.offensive, label: "offensive", weight: 1.1 },
   ];
 
-  // Find the lowest cap from any critical issue
-  let safetyCap = 100;
-  for (const check of criticalChecks) {
-    if (check.score >= check.threshold) {
-      // If score exceeds critical threshold, use the cap
-      safetyCap = Math.min(safetyCap, check.maxSafetyScore);
-    } else if (check.score >= check.threshold * 0.6) {
-      // If approaching critical, start reducing the cap
-      const warningCap = check.maxSafetyScore + 30; // e.g., 50 for nudity
-      safetyCap = Math.min(safetyCap, warningCap);
+  // CRITICAL CHECK: If ANY category is >= 65%, immediately flag as unsafe
+  const CRITICAL_THRESHOLD = 0.65;
+  const WARNING_THRESHOLD = 0.40;
+  // AI-Generated uses a higher threshold since it's about disclosure, not safety
+  const AI_CRITICAL_THRESHOLD = 0.85;
+  const AI_WARNING_THRESHOLD = 0.70;
+  
+  let hasCriticalIssue = false;
+  let hasWarningIssue = false;
+  let maxCriticalScore = 0;
+  
+  for (const category of criticalCategories) {
+    if (category.score >= CRITICAL_THRESHOLD) {
+      hasCriticalIssue = true;
+      maxCriticalScore = Math.max(maxCriticalScore, category.score * category.weight);
+    } else if (category.score >= WARNING_THRESHOLD) {
+      hasWarningIssue = true;
     }
   }
 
-  // Weight the different categories for base score calculation
+  // Check AI-generated as a critical issue requiring disclosure
+  if (scores.ai_generated >= AI_CRITICAL_THRESHOLD) {
+    hasCriticalIssue = true;
+    // AI-generated impacts score significantly but slightly less than content violations
+    maxCriticalScore = Math.max(maxCriticalScore, scores.ai_generated * 0.9);
+  } else if (scores.ai_generated >= AI_WARNING_THRESHOLD) {
+    hasWarningIssue = true;
+  }
+
+  // If critical issue found (>= 65%), cap score very low
+  if (hasCriticalIssue) {
+    // Score inversely proportional to how bad the issue is
+    // At 65% risk: safety score = 20
+    // At 80% risk: safety score = 10
+    // At 100% risk: safety score = 0
+    const safetyScore = Math.max(0, Math.round(20 * (1 - (maxCriticalScore - 0.65) / 0.35)));
+    return safetyScore;
+  }
+
+  // Calculate base score from weighted penalties
   const weights = {
-    nudity: 0.2,
+    nudity: 0.25,
     drugs: 0.15,
-    gore: 0.15,
+    gore: 0.20,
     violence: 0.15,
-    self_harm: 0.15,
+    self_harm: 0.20,
     offensive: 0.15,
-    ai: 0.05,
+    ai: 0.10, // AI-generated now has meaningful weight for score calculation
   };
   
-  // Calculate weighted penalty
+  // Calculate weighted penalty (each category contributes to lowering the score)
   const penalty =
     maxNudity * weights.nudity +
     scores.recreational_drug * weights.drugs +
@@ -500,12 +756,16 @@ function calculateOverallSafetyScore(scores: SightEngineModerationScores): numbe
     scores.violence * weights.violence +
     scores.self_harm * weights.self_harm +
     scores.offensive * weights.offensive +
-    scores.ai_generated * weights.ai * 0.3; // Lower penalty for AI detection
+    scores.ai_generated * weights.ai;
   
-  // Calculate base score
-  const baseScore = Math.max(0, Math.round((1 - penalty) * 100));
+  // Calculate base score (inverted - higher penalty = lower safety)
+  let safetyScore = Math.max(0, Math.round((1 - penalty * 1.5) * 100));
   
-  // Apply the cap from critical issues
-  return Math.min(baseScore, safetyCap);
+  // If warning issues found (>= 40% but < 65%), cap at 60
+  if (hasWarningIssue) {
+    safetyScore = Math.min(safetyScore, 60);
+  }
+  
+  return safetyScore;
 }
 

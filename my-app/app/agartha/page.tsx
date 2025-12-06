@@ -246,26 +246,31 @@ export default function AgarthaCompliance() {
               >
                 <FileBarChart className={`w-5 h-5 transition-transform duration-300 ${activeTab === "results" ? "scale-110" : ""}`} />
                 <span>Results</span>
-                {report && (
-                  <span className={`ml-1 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-300 ${
-                    activeTab === "results" 
-                      ? "bg-white/20 text-white" 
-                      : report.textViolations.length === 0
-                        ? "bg-green-500/20 text-green-400 animate-pulse-subtle"
-                        : report.textViolations.length >= 3
-                          ? "bg-red-500/20 text-red-400 animate-pulse-subtle"
-                          : "bg-amber-500/20 text-amber-400 animate-pulse-subtle"
-                  }`}>
-                    {report.textViolations.length === 0 ? (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    ) : report.textViolations.length >= 3 ? (
-                      <XCircle className="w-3.5 h-3.5" />
-                    ) : (
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                    )}
-                    {report.textViolations.length} {report.textViolations.length === 1 ? "issue" : "issues"}
-                  </span>
-                )}
+                {report && (() => {
+                  const totalIssues = report.textViolations.length + 
+                    report.imageViolations.length + 
+                    (report.imageTextViolations?.length || 0);
+                  return (
+                    <span className={`ml-1 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-300 ${
+                      activeTab === "results" 
+                        ? "bg-white/20 text-white" 
+                        : totalIssues === 0
+                          ? "bg-green-500/20 text-green-400 animate-pulse-subtle"
+                          : totalIssues >= 3
+                            ? "bg-red-500/20 text-red-400 animate-pulse-subtle"
+                            : "bg-amber-500/20 text-amber-400 animate-pulse-subtle"
+                    }`}>
+                      {totalIssues === 0 ? (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      ) : totalIssues >= 3 ? (
+                        <XCircle className="w-3.5 h-3.5" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                      )}
+                      {totalIssues} {totalIssues === 1 ? "issue" : "issues"}
+                    </span>
+                  );
+                })()}
               </button>
             </div>
           </div>

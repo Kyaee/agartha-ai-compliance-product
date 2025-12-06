@@ -6,14 +6,17 @@ export type Platform = "meta" | "google" | "tiktok";
 
 export type LLMProvider = "openai" | "gemini";
 
-export type ProductCategory =
+// Predefined product categories
+export type PredefinedProductCategory =
   | "erectile_dysfunction"
   | "hair_loss"
   | "weight_loss"
   | "skincare"
   | "supplements"
-  | "mental_health"
-  | "other";
+  | "mental_health";
+
+// Product category can be predefined or custom string
+export type ProductCategory = PredefinedProductCategory | string;
 
 export interface Violation {
   id: string;
@@ -64,6 +67,9 @@ export interface ComplianceReport {
   // SightEngine moderation data
   imageModerationScores?: SightEngineModerationScores;
   imageSafetyScore?: number;
+  // Text content issues detected in image
+  hasProfanity?: boolean;
+  profanityMatches?: string[];
 }
 
 export interface SubmissionData {

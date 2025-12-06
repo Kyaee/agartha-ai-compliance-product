@@ -1,9 +1,56 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Upload, FileText, Image as ImageIcon, Loader2, AlertCircle, X, Sparkles, Clipboard, ScanEye, FileSearch } from "lucide-react";
-import type { Platform, ProductCategory, SubmissionData, LLMProvider } from "../types";
+import { Upload, FileText, Image as ImageIcon, Loader2, AlertCircle, X, Sparkles, Clipboard, ScanEye, FileSearch, Edit3 } from "lucide-react";
+import type { Platform, ProductCategory, PredefinedProductCategory, SubmissionData, LLMProvider } from "../types";
 import { PLATFORM_DISPLAY_NAMES, PRODUCT_CATEGORY_DISPLAY_NAMES } from "../constants/policies";
+
+// Safeguards for custom product category input
+const CATEGORY_SAFEGUARDS = {
+  maxLength: 50,
+  minLength: 3,
+  // Prohibited words/patterns (inappropriate content)
+  prohibitedPatterns: [
+    /\b(fuck|shit|damn|ass|bitch|cunt|dick|cock|pussy)\b/i,
+    /\b(nigger|nigga|faggot|retard)\b/i,
+    /[<>{}[\]\\\/]/,  // No code injection characters
+    /https?:\/\//i,    // No URLs
+    /\b(script|eval|onclick|onerror)\b/i, // No script injection
+  ],
+  // Must be healthcare/product related - allow general product descriptions
+  allowedPattern: /^[a-zA-Z0-9\s\-\&\'\(\)]+$/,
+};
+
+function sanitizeCategory(input: string): { valid: boolean; sanitized: string; error?: string } {
+  const trimmed = input.trim();
+  
+  if (trimmed.length < CATEGORY_SAFEGUARDS.minLength) {
+    return { valid: false, sanitized: trimmed, error: `Category must be at least ${CATEGORY_SAFEGUARDS.minLength} characters` };
+  }
+  
+  if (trimmed.length > CATEGORY_SAFEGUARDS.maxLength) {
+    return { valid: false, sanitized: trimmed, error: `Category must be less than ${CATEGORY_SAFEGUARDS.maxLength} characters` };
+  }
+  
+  // Check for prohibited patterns
+  for (const pattern of CATEGORY_SAFEGUARDS.prohibitedPatterns) {
+    if (pattern.test(trimmed)) {
+      return { valid: false, sanitized: trimmed, error: "Category contains inappropriate content" };
+    }
+  }
+  
+  // Check allowed characters
+  if (!CATEGORY_SAFEGUARDS.allowedPattern.test(trimmed)) {
+    return { valid: false, sanitized: trimmed, error: "Category can only contain letters, numbers, spaces, hyphens, and basic punctuation" };
+  }
+  
+  // Capitalize first letter of each word
+  const sanitized = trimmed
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+  
+  return { valid: true, sanitized };
+}
 
 interface SubmissionFormProps {
   onSubmit: (data: SubmissionData & { apiKey: string; provider: LLMProvider; imageOnly?: boolean }) => Promise<void>;
@@ -33,6 +80,9 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
   const [marketingCopy, setMarketingCopy] = useState("");
   const [platform, setPlatform] = useState<Platform>("meta");
   const [productCategory, setProductCategory] = useState<ProductCategory>("weight_loss");
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
+  const [customCategoryError, setCustomCategoryError] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -43,6 +93,35 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
   const [imageOnly, setImageOnly] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // Handle custom category input change
+  const handleCustomCategoryChange = (value: string) => {
+    setCustomCategoryInput(value);
+    setCustomCategoryError(null);
+    
+    if (value.trim()) {
+      const result = sanitizeCategory(value);
+      if (!result.valid && result.error) {
+        setCustomCategoryError(result.error);
+      } else {
+        setProductCategory(result.sanitized);
+      }
+    }
+  };
+
+  // Handle category selection change
+  const handleCategoryChange = (value: string) => {
+    if (value === "__custom__") {
+      setIsCustomCategory(true);
+      setCustomCategoryInput("");
+      setProductCategory("");
+    } else {
+      setIsCustomCategory(false);
+      setCustomCategoryInput("");
+      setCustomCategoryError(null);
+      setProductCategory(value as PredefinedProductCategory);
+    }
+  };
 
   // Handle image from File object (used by upload, paste, and drop)
   const handleImageFile = useCallback((file: File) => {
@@ -175,6 +254,25 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
         setError("Please enter marketing copy to analyze");
         return;
       }
+    }
+
+    // Validate custom category
+    if (isCustomCategory) {
+      if (!customCategoryInput.trim()) {
+        setError("Please enter a custom product category");
+        return;
+      }
+      const result = sanitizeCategory(customCategoryInput);
+      if (!result.valid) {
+        setError(result.error || "Invalid product category");
+        return;
+      }
+    }
+
+    // Validate that a category is selected
+    if (!productCategory) {
+      setError("Please select or enter a product category");
+      return;
     }
 
     // Only require API key for OpenAI
@@ -336,8 +434,8 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
           </label>
           <select
             id="category"
-            value={productCategory}
-            onChange={(e) => setProductCategory(e.target.value as ProductCategory)}
+            value={isCustomCategory ? "__custom__" : productCategory}
+            onChange={(e) => handleCategoryChange(e.target.value)}
             className="form-select"
           >
             {Object.entries(PRODUCT_CATEGORY_DISPLAY_NAMES).map(([value, label]) => (
@@ -345,7 +443,33 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
                 {label}
               </option>
             ))}
+            <option value="__custom__">✏️ Custom Category...</option>
           </select>
+          
+          {/* Custom Category Input */}
+          {isCustomCategory && (
+            <div className="mt-3 space-y-2">
+              <div className="relative flex items-center">
+                <Edit3 className="absolute left-4 w-4 h-4 text-slate-500 pointer-events-none" />
+                <input
+                  type="text"
+                  value={customCategoryInput}
+                  onChange={(e) => handleCustomCategoryChange(e.target.value)}
+                  placeholder="Enter your product category (e.g., Dental Care, Vision Health)"
+                  className={`form-input pl-12! ${customCategoryError ? "border-red-500/50 focus:ring-red-500/50" : ""}`}
+                  maxLength={CATEGORY_SAFEGUARDS.maxLength}
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className={customCategoryError ? "text-red-400" : "text-slate-500"}>
+                  {customCategoryError || "Letters, numbers, and basic punctuation only"}
+                </span>
+                <span className="text-slate-500">
+                  {customCategoryInput.length}/{CATEGORY_SAFEGUARDS.maxLength}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -480,7 +604,7 @@ export function SubmissionForm({ onSubmit, isLoading }: SubmissionFormProps) {
       {/* Error Display */}
       {error && (
         <div className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>
         </div>
       )}

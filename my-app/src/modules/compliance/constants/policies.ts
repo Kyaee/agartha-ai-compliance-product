@@ -339,8 +339,12 @@ export const PRODUCT_CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   skincare: "Skincare",
   supplements: "Dietary Supplements",
   mental_health: "Mental Health",
-  other: "Other Healthcare",
 };
+
+// Helper function to get display name for any category (predefined or custom)
+export function getProductCategoryDisplayName(category: string): string {
+  return PRODUCT_CATEGORY_DISPLAY_NAMES[category] || category;
+}
 
 export const SEVERITY_CONFIG = {
   critical: {
